@@ -1,4 +1,5 @@
 #include "Cell.hpp"
+#include <limits>
 
 #define NUM_OBJ (refnum)2048
 static uint8_t refs[NUM_OBJ] = {0};
@@ -90,17 +91,20 @@ Cell::~Cell () {
 
 /// C'tor, D'tor, Copies
 
-Lizt::Lizt (LiztT _type, void* _state) : type(_type), state(_state) {
+Lizt::Lizt (LiztT _type, lztlen _len, void* _state)
+  : type(_type), len(_len), config(_state) {
   refs[ref = newRef()] = 1;
 }
 Lizt::Lizt (const Lizt& obj) {
   type = obj.type;
-  state = obj.state;
+  len = obj.len;
+  config = obj.config;
   ++refs[ref = obj.ref];
 }
 Lizt& Lizt::operator= (const Lizt& obj) {
   type = obj.type;
-  state = obj.state;
+  len = obj.len;
+  config = obj.config;
   ++refs[ref = obj.ref];
   return *this;
 }
@@ -109,10 +113,11 @@ Lizt::~Lizt () {
   if (!refs[ref]) return;
   if (--refs[ref]) return;
   switch (type) {
-    case P_Vec:   delete (queue<Value>*)state; break;
-    case P_Cycle: delete (Cycle*)state;        break;
-    case P_Range: delete (Range*)state;        break;
-    case P_Map:   delete (Map*)state;          break;
+    case P_Vec:   delete (vector<Value>*)config; break;
+    case P_Cycle: delete (vector<Value>*)config; break;
+    case P_Range: delete (Range*)config;         break;
+    case P_Map:   delete (Map*)config;           break;
+    case P_Take:  delete (Take*)config;          break;
   }
 }
 
@@ -130,59 +135,47 @@ Lizt* Lizt::list (Value v) {
     case T_Lizt: 
       return new Lizt(*v.lizt());
     case T_Vec: {
-      auto vect = vec(v);
-      auto q = new queue<Value>();
-      for (Value val : *vect)
-        q->push(val);
-      return new Lizt(P_Vec, q);
+      auto iVect = vec(v);
+      auto mVect = new vector<Value>();
+      for (Value val : *iVect)
+        mVect->push_back(val);
+      return new Lizt(P_Vec, mVect->size(), mVect);
     }
   }
   return cycle({v});
 }
 
+Lizt* Lizt::take (Take take) {
+  lztlen len = take.lizt->len;
+  if (len != -1) len = take.take;
+  return new Lizt(P_Take, len, new Take(take));
+}
+
 Lizt* Lizt::range (Range range) {
-  return new Lizt(P_Range, new Range(range));
+  lztlen len = range.to > 0 ? range.to - range.from : range.from - range.to;
+  if (!len) len = -1;
+  return new Lizt(P_Range, len, new Range(range));
 }
 
 Lizt* Lizt::cycle (vector<Value> v) {
-  return new Lizt(P_Cycle, new Cycle{v});
+  return new Lizt(P_Cycle, -1, new vector<Value>{v});
 }
 
 Lizt* Lizt::map (Cell* head, vector<Lizt*> sources) {
-  return new Lizt(P_Map, new Map{sources, head});
+  //Check if all are infinite
+  lztlen smallest, maximum;
+  smallest = maximum = numeric_limits<lztlen>::max();
+  for (argnum v = 0, vLen = sources.size(); v < vLen; ++v)
+    if (!sources[v]->isInf())
+      if (sources[v]->len < smallest)
+        smallest = sources[v]->len;
+  if (smallest == maximum)
+    smallest = -1;
+  return new Lizt(P_Map, smallest, new Map{sources, head});
 }
 
 /// Methods
 
-bool Lizt::isEmpty () {
-  switch (type) {
-    case P_Vec:
-      return !((queue<Value>*)state)->size();
-    case P_Range: {
-      auto r = (Range*)state;
-      return r->step ? r->next >= r->to : false;
-    }
-    case P_Map: {
-      auto m = (Lizt::Map*)state;
-      for (argnum v = 0, vLen = m->sources.size(); v < vLen; ++v)
-        if (m->sources[v]->isEmpty())
-          return true;
-    }
-  }
-  return false;
-}
-
-bool Lizt::isInfinite () {
-  if (type == P_Range)
-    return !((Range*)state)->step;
-  if (type == P_Cycle)
-    return true;
-  if (type == P_Map) {
-    auto m = (Lizt::Map*)state;
-    for (argnum v = 0, vLen = m->sources.size(); v < vLen; ++v)
-      if (!m->sources[v]->isInfinite())
-        return false;
-    return true;
-  }
-  return false;
+bool Lizt::isInf () {
+  return len == -1;
 }

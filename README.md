@@ -79,7 +79,7 @@ Execute the `build/ephem` binary.
 
 ```clj
 (range 5 10)                  => [5 6 7 8 9]
-(map + [0 1 2] [4 5 6])       => [4 6 8]
+(map + [0 1 2] [4 5 6 7])     => [4 6 8]
 (map + [3 1 4] (range))       => [3 2 6]
 (map * (range 4) (range))     => [0 1 4 9]
 (map + [0 1 2] 3)             => [3 4 5]
@@ -87,6 +87,8 @@ Execute the `build/ephem` binary.
 (map #(str % \!) [1 2 3])     => ["1!" "2!" "3!"]
 (map #(% 12 3) [+ - * /])     => [15 9 36 4]
 (map + (cycle 2 1) (range 6)) => [2 2 4 4 6 6]
+(take 5 (skip 4 (range)))     => [4 5 6 7 8]
+(take 5 4 (range))            => [4 5 6 7 8]
 ```
 
 ### Immutable vectors

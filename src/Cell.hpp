@@ -70,43 +70,46 @@ enum LiztT : uint8_t {
   P_Vec, P_Cycle, P_Range, P_Map, P_Take
 };
 
-//P_Vec   _state is queue<Value>*
-//P_Cycle _state is Cycle*
+//P_Vec   _state is vector<Value>*
+//P_Cycle _state is vector<Value>*
 //P_Range _state is Range*
 //P_Map   _state is Map*
+//P_Take  _state is Take*
 class Lizt {
 public:
-  struct Cycle {
-    vector<Value> items;
-    veclen i;
-  };
   struct Range {
-    int32_t to    = 0;
-    int32_t step  = 0; //0 for infinity
-    int32_t next  = 0;
+    const int32_t from = 0; //
+    const int32_t to   = 0; // Equal for infinite
+    const int32_t step = 0;
   };
   struct Map {
     vector<Lizt*> sources;
     Cell* head;
     ~Map ();
   };
+  struct Take {
+    Lizt*   lizt;
+    int32_t skip;
+    int32_t take; //Negative for infinite
+  };
 
   refnum ref;
   LiztT type;
-  void* state;
+  lztlen len;
+  void* config;
 
   Lizt (const Lizt&);
   Lizt& operator= (const Lizt&);
 
   ~Lizt ();
   static Lizt* list  (Value);
+  static Lizt* take  (Take);
   static Lizt* range (Range);
   static Lizt* cycle (vector<Value>);
   static Lizt* map   (Cell*, vector<Lizt*>);
-  bool isEmpty ();
-  bool isInfinite ();
+  bool isInf ();
 
 private:
 
-  Lizt (LiztT, void*);
+  Lizt (LiztT, lztlen, void*);
 };

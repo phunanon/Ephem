@@ -19,12 +19,14 @@ private:
   Value o_If    (Cell*, Cell*);
   Value o_Math  (Cell*, Cell*, Op);
   Value o_Vec   (Cell*, Cell*);
+  Value o_Skip  (Cell*, Cell*);
+  Value o_Take  (Cell*, Cell*);
   Value o_Range (Cell*, Cell*);
   Value o_Cycle (Cell*, Cell*);
   Value o_Map   (Cell*, Cell*);
   Value o_Str   (Cell*, Cell*);
   Value o_Print (Cell*, Cell*, bool);
   Value o_Val   (Cell*, Cell*);
-  Value liztNext (Lizt*);
-  Value liztRest (Lizt*);
+  Value liztAt   (Lizt*, lztlen);
+  Value liztFrom (Lizt*, lztlen);
 };

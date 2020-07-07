@@ -1,7 +1,6 @@
 #include "EVM.hpp"
 #include <cstdint>
 #include <cstring>
-#include <limits>
 
 void EVM::addFunc (fid id, vector<Cell*> cells) {
   Cell* next = new Cell();
@@ -32,6 +31,13 @@ Value EVM::nextValBy (Cell* a, Cell* p, argnum by) {
   else
     return val(a, p);
   return by ? Value() : val(a, p);
+}
+
+argnum numArgs (Cell* a) {
+  if (!a) return 0;
+  argnum num = 1;
+  while ((a = a->next)) ++num;
+  return num;
 }
 
 
@@ -94,21 +100,51 @@ Value EVM::o_Vec (Cell* a, Cell* p) {
 }
 
 
+//Returns a skip Lizt.
+//  e.g. (skip n vec)
+Value EVM::o_Skip (Cell* a, Cell* p) {
+  if (numArgs(a) != 2) return Value();
+  auto take = Lizt::Take{Lizt::list(val(a->next, p)), val(a, p).s32(), -1};
+  return Value(Data{.ptr=Lizt::take(take)}, T_Lizt);
+}
+
+
+//Returns a skip/take Lizt.
+//  e.g. (take n vec) (take n skip vec)
+Value EVM::o_Take (Cell* a, Cell* p) {
+  argnum n = numArgs(a);
+  if (n < 2) return Value();
+  auto takeN = val(a, p).s32();
+  auto skipN = n == 3 ? val(a->next, p).s32() : 0;
+  Lizt* lizt = Lizt::list(val(n == 2 ? a->next : a->next->next, p));
+  if (skipN + takeN > lizt->len)
+    takeN = lizt->len - skipN;
+  if (takeN < 0) takeN = 0;
+  auto take = Lizt::Take{lizt, skipN, takeN};
+  return Value(Data{.ptr=Lizt::take(take)}, T_Lizt);
+}
+
+
 //Returns a range Lizt.
 //  e.g. (range) (range to) (range from to) (range from to step)
 Value EVM::o_Range (Cell* a, Cell* p) {
-  auto range = Lizt::Range();
-  range.step = a ? 1 : 0;
-  if (a && !a->next) {
-    range.to = val(a, p).s32();
+  int32_t from = 0, to = 0, step = a ? 1 : 0;
+  auto n = numArgs(a);
+  switch (n) {
+    case 1:
+      to = val(a, p).s32();
+      break;
+    case 2:
+      from = val(a, p).s32();
+      to = val(a->next, p).s32();
+      break;
+    case 3:
+      step = val(a->next->next, p).s32();
+      break;
   }
-  if (a && a->next) {
-    range.next = val(a, p).s32();
-    range.to = val(a->next, p).s32();
-    if (a->next->next)
-      range.step = val(a->next->next, p).s32();
-  }
-  return Value(Data{.ptr=Lizt::range(range)}, T_Lizt);
+  if (n != 3 && to < 0)
+    step = -1;
+  return Value(Data{.ptr=Lizt::range(Lizt::Range{from, to, step})}, T_Lizt);
 }
 
 
@@ -172,6 +208,8 @@ Value EVM::exe (Op op, Cell* a, Cell* p) {
     case O_Add: case O_Sub: case O_Mul: case O_Div:
                   return o_Math(a, p, op);
     case O_Vec:   return o_Vec(a, p);
+    case O_Skip:  return o_Skip(a, p);
+    case O_Take:  return o_Take(a, p);
     case O_Cycle: return o_Cycle(a, p);
     case O_Range: return o_Range(a, p);
     case O_Map:   return o_Map(a, p);
@@ -225,43 +263,36 @@ string EVM::toStr (Value v) {
         vecStr += " " + toStr((Value)vect[i]);
       return "["+ vecStr +"]";
     }
-    case T_Lizt: return toStr(liztRest(v.lizt())); break;
+    case T_Lizt: return toStr(liztFrom(v.lizt(), 0)); break;
     //TODO
   }
   return string("?");
 }
 
 //Returns next value of the lazy list
-Value EVM::liztNext (Lizt* l) {
-  if (l->isEmpty()) return Value();
+Value EVM::liztAt (Lizt* l, lztlen at) {
   switch (l->type) {
     case LiztT::P_Vec: {
-      auto state = (queue<Value>*)l->state;
-      auto v = state->front();
-      state->pop();
-      return v;
+      auto list = (vector<Value>*)l->config;
+      return list->at(at);
     }
     case LiztT::P_Cycle: {
-      auto c = (Lizt::Cycle*)l->state;
-      auto v = c->items[c->i++];
-      if (c->i == c->items.size())
-        c->i = 0;
-      return v;
+      auto c = (vector<Value>*)l->config;
+      return c->at(at % c->size());
     }
     case LiztT::P_Range: {
-      auto r = (Lizt::Range*)l->state;
-      int32_t next = r->next;
-      r->next += r->step ? r->step : 1;
-      return Value(Data{.s32=next}, T_S32);
+      auto r = (Lizt::Range*)l->config;
+      int32_t n = r->from == r->to ? at : r->from + (at * r->step);
+      return Value(Data{.s32=n}, T_S32);
     }
     case LiztT::P_Map: {
-      auto m = (Lizt::Map*)l->state;
+      auto m = (Lizt::Map*)l->config;
       Cell* args = nullptr;
       {
         Cell* arg = nullptr;
         //Take one item from each source vector and turn it into an argument
         for (argnum v = 0, vLen = m->sources.size(); v < vLen; ++v) {
-          (arg ? arg->next : arg) = new Cell{liztNext(m->sources[v])};
+          (arg ? arg->next : arg) = new Cell{liztAt(m->sources[v], at)};
           if (!args) args = arg;
         }
       }
@@ -274,15 +305,19 @@ Value EVM::liztNext (Lizt* l) {
       delete args;
       return v;
     }
+    case LiztT::P_Take: {
+      auto t = (Lizt::Take*)l->config;
+      return liztAt(t->lizt, t->skip + at);
+    }
   }
   return Value();
 }
 
 //Returns remaining Lizt items as T_Vec
-Value EVM::liztRest (Lizt* l) {
-  if (l->isInfinite()) return Value();
+Value EVM::liztFrom (Lizt* l, lztlen from) {
+  if (l->isInf()) return Value();
   auto list = immer::vector<Value>();
-  while (!l->isEmpty())
-    list = list.push_back(liztNext(l));
+  for (auto i = from; i < l->len; ++i)
+    list = list.push_back(liztAt(l, i));
   return Value(Data{.ptr=new immer::vector<Value>(list)}, T_Vec);
 }
