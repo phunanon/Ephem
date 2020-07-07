@@ -23,6 +23,7 @@ private:
   Value o_Take  (Cell*, Cell*);
   Value o_Range (Cell*, Cell*);
   Value o_Cycle (Cell*, Cell*);
+  Value o_Emit  (Cell*, Cell*);
   Value o_Map   (Cell*, Cell*);
   Value o_Str   (Cell*, Cell*);
   Value o_Print (Cell*, Cell*, bool);

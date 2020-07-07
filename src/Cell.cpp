@@ -28,8 +28,7 @@ Value& Value::operator= (const Value& obj) {
 }
 
 Value::~Value () {
-  if (!refs[_ref]) return;
-  if (--refs[_ref]) return;
+  if (!refs[_ref] || --refs[_ref]) return;
 //if (type == T_Cell || type == T_Str || type == T_Lamb || type == T_Vec)
 //  printf("haha %d\n", type);
   switch (_type) {
@@ -110,14 +109,14 @@ Lizt& Lizt::operator= (const Lizt& obj) {
 }
 
 Lizt::~Lizt () {
-  if (!refs[ref]) return;
-  if (--refs[ref]) return;
+  if (!refs[ref] || --refs[ref]) return;
   switch (type) {
     case P_Vec:   delete (vector<Value>*)config; break;
     case P_Cycle: delete (vector<Value>*)config; break;
     case P_Range: delete (Range*)config;         break;
     case P_Map:   delete (Map*)config;           break;
     case P_Take:  delete (Take*)config;          break;
+    case P_Emit:  delete (Value*)config;         break; 
   }
 }
 
@@ -129,25 +128,22 @@ Lizt::Map::~Map () {
 /// Factories
 
 //Accepts a Value of any type and converts it to a Lizt.
-//  If the Value is not a T_Vec or T_Lizt it returns a P_Cycle.
+//  If the Value is not a T_Vec or T_Lizt it returns a P_Emit.
 Lizt* Lizt::list (Value v) {
-  switch (v.type()) {
-    case T_Lizt: 
-      return new Lizt(*v.lizt());
-    case T_Vec: {
-      auto iVect = vec(v);
-      auto mVect = new vector<Value>();
-      for (Value val : *iVect)
-        mVect->push_back(val);
-      return new Lizt(P_Vec, mVect->size(), mVect);
-    }
+  if (v.type() == T_Lizt)
+    return new Lizt(*v.lizt());
+  if (v.type() == T_Vec) {
+    auto iVect = vec(v);
+    auto mVect = new vector<Value>();
+    for (Value val : *iVect)
+      mVect->push_back(val);
+    return new Lizt(P_Vec, mVect->size(), mVect);
   }
-  return cycle({v});
+  return emit(v, -1);
 }
 
 Lizt* Lizt::take (Take take) {
-  lztlen len = take.lizt->len;
-  if (len != -1) len = take.take;
+  lztlen len = take.take != -1 ? take.take : take.lizt->len;
   return new Lizt(P_Take, len, new Take(take));
 }
 
@@ -159,6 +155,10 @@ Lizt* Lizt::range (Range range) {
 
 Lizt* Lizt::cycle (vector<Value> v) {
   return new Lizt(P_Cycle, -1, new vector<Value>{v});
+}
+
+Lizt* Lizt::emit (Value v, lztlen len) {
+  return new Lizt(P_Emit, len, new Value(v));
 }
 
 Lizt* Lizt::map (Cell* head, vector<Lizt*> sources) {

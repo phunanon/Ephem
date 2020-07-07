@@ -89,6 +89,7 @@ Execute the `build/ephem` binary.
 (map + (cycle 2 1) (range 6)) => [2 2 4 4 6 6]
 (take 5 (skip 4 (range)))     => [4 5 6 7 8]
 (take 5 4 (range))            => [4 5 6 7 8]
+(emit 3 5)                    => [3 3 3 3 3]
 ```
 
 ### Immutable vectors

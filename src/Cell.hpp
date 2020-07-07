@@ -67,14 +67,9 @@ struct Cell {
 
 
 enum LiztT : uint8_t {
-  P_Vec, P_Cycle, P_Range, P_Map, P_Take
+  P_Vec, P_Take, P_Cycle, P_Range, P_Map, P_Emit
 };
 
-//P_Vec   _state is vector<Value>*
-//P_Cycle _state is vector<Value>*
-//P_Range _state is Range*
-//P_Map   _state is Map*
-//P_Take  _state is Take*
 class Lizt {
 public:
   struct Range {
@@ -96,6 +91,9 @@ public:
   refnum ref;
   LiztT type;
   lztlen len;
+  //Config types:
+  //  P_Vec:vector<Value>* P_Cycle:vector<Value>* P_Range:Range*
+  //  P_Map:Map* P_Take:Take* P_Repeat:Value
   void* config;
 
   Lizt (const Lizt&);
@@ -106,6 +104,7 @@ public:
   static Lizt* take  (Take);
   static Lizt* range (Range);
   static Lizt* cycle (vector<Value>);
+  static Lizt* emit  (Value, lztlen);
   static Lizt* map   (Cell*, vector<Lizt*>);
   bool isInf ();
 

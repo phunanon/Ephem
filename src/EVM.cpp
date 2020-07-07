@@ -117,7 +117,7 @@ Value EVM::o_Take (Cell* a, Cell* p) {
   auto takeN = val(a, p).s32();
   auto skipN = n == 3 ? val(a->next, p).s32() : 0;
   Lizt* lizt = Lizt::list(val(n == 2 ? a->next : a->next->next, p));
-  if (skipN + takeN > lizt->len)
+  if (!lizt->isInf() && skipN + takeN > lizt->len)
     takeN = lizt->len - skipN;
   if (takeN < 0) takeN = 0;
   auto take = Lizt::Take{lizt, skipN, takeN};
@@ -155,6 +155,13 @@ Value EVM::o_Cycle (Cell* a, Cell* p) {
     a = a->next;
   }
   return Value(Data{.ptr=Lizt::cycle(vals)}, T_Lizt);
+}
+
+
+Value EVM::o_Emit (Cell* a, Cell* p) {
+  if (!a) return Value();
+  lztlen len = a->next ? val(a->next, p).s32() : -1;
+  return Value(Data{.ptr=Lizt::emit(val(a, p), len)}, T_Lizt);
 }
 
 
@@ -210,8 +217,9 @@ Value EVM::exe (Op op, Cell* a, Cell* p) {
     case O_Vec:   return o_Vec(a, p);
     case O_Skip:  return o_Skip(a, p);
     case O_Take:  return o_Take(a, p);
-    case O_Cycle: return o_Cycle(a, p);
     case O_Range: return o_Range(a, p);
+    case O_Cycle: return o_Cycle(a, p);
+    case O_Emit:  return o_Emit(a, p);
     case O_Map:   return o_Map(a, p);
     case O_Str:   return o_Str(a, p);
     case O_Print: case O_Priln:
@@ -276,15 +284,21 @@ Value EVM::liztAt (Lizt* l, lztlen at) {
       auto list = (vector<Value>*)l->config;
       return list->at(at);
     }
-    case LiztT::P_Cycle: {
-      auto c = (vector<Value>*)l->config;
-      return c->at(at % c->size());
+    case LiztT::P_Take: {
+      auto t = (Lizt::Take*)l->config;
+      return liztAt(t->lizt, t->skip + at);
     }
     case LiztT::P_Range: {
       auto r = (Lizt::Range*)l->config;
       int32_t n = r->from == r->to ? at : r->from + (at * r->step);
       return Value(Data{.s32=n}, T_S32);
     }
+    case LiztT::P_Cycle: {
+      auto c = (vector<Value>*)l->config;
+      return c->at(at % c->size());
+    }
+    case LiztT::P_Emit:
+      return *(Value*)l->config;
     case LiztT::P_Map: {
       auto m = (Lizt::Map*)l->config;
       Cell* args = nullptr;
@@ -304,10 +318,6 @@ Value EVM::liztAt (Lizt* l, lztlen at) {
       m->head->next = nullptr;
       delete args;
       return v;
-    }
-    case LiztT::P_Take: {
-      auto t = (Lizt::Take*)l->config;
-      return liztAt(t->lizt, t->skip + at);
     }
   }
   return Value();
