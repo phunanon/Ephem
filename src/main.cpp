@@ -7,11 +7,6 @@
 using namespace std;
 
 int main () {
-
-    //string source = "(fn thing [a] //Stuff\n  (str \\= \"  \" ((if T + /) a 3)))\n(thing 12)";
-    //string source = "(println (map #(* 2 %) [0 1 2]))";
-    //string source = "(println \"Hello, world!\")";
-
   printf("Ephem REPL. %% gives previous result. Arrow keys navigate history/entry. ^C to quit.\n");
   EVM vm = EVM();
   Cell* previous = nullptr;
@@ -33,6 +28,6 @@ int main () {
       delete previous;
       previous = evaled;
     }
-    printf("%s\n", previous->value.toStr().c_str());
+    printf("%s\n", vm.toStr(previous->value).c_str());
   }
 }

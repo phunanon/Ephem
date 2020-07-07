@@ -116,7 +116,7 @@ vector<Token> tokenise (const string& input) {
         type = Token::Char;
       else if (c == '%')
         type = Token::Para;
-      else if (isNumber(next))
+      else if (isNumber(next) && !(next.length() == 1 && (c == '-' || c == '+')))
         type = Token::Number;
       else if (c == '.')
         type = Token::Period;
@@ -176,20 +176,6 @@ Cell* cellise (deque<Token> &tokens, vector<string> paras) {
       Cell* vecForm = cellise(tokens, paras);
       cell = new Cell{Value(Data{.cell=vecForm}, T_Cell)};
     } else {
-    /*
-    //... or generate vector Cell for the following arguments
-    if (token.type == Token::LSquare) {
-      Cell* headArg = cellise(tokens, paras);
-      Cell* arg = headArg;
-      auto vect = immer::vector<Value>();
-      while (arg) {
-        vect = vect.push_back(arg->value);
-        arg = arg->next;
-      }
-      delete headArg;
-      auto vectPtr = new immer::vector<Value>(vect);
-      return new Cell{Value(Data{.ptr=vectPtr}, T_Vec)};
-    } else {*/
     //... or generate Cell for this other type of argument
       Data data;
       Type type = T_N;

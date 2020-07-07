@@ -40,6 +40,7 @@ Value::~Value () {
     case T_Lamb: delete cell();            break;
     case T_Str:  delete (string*)data.ptr; break;
     case T_Vec:  delete (immer::vector<Value>*)data.ptr; break;
+    case T_Lizt: delete (Lizt*)data.ptr;   break;
   }
 }
 
@@ -68,29 +69,9 @@ uint32_t Value::u32 () { return data.u32; }
 int32_t  Value::s32 () { return data.s32; }
 float    Value::d32 () { return data.d32; }
 string   Value::str () { return *(string*)data.ptr; }
+Lizt*    Value::lizt() { return (Lizt*)data.ptr; }
 Cell*    Value::cell() { return (Cell*)data.ptr; }
 
-string Value::toStr () {
-  switch (type) {
-    case T_N:   return string("N");
-    case T_U08: return to_string(u08());
-    case T_S08: return string(1, s08());
-    case T_U32: return to_string(u32());
-    case T_D32: return to_string(d32());
-    case T_Str: return str();
-    case T_Vec: {
-      auto v = *vec(*this);
-      auto vLen = v.size();
-      if (!vLen) return "[]";
-      string vecStr = ((Value)v[0]).toStr();
-      for (veclen i = 1; i < vLen; ++i)
-        vecStr += " " + ((Value)v[i]).toStr();
-      return "["+ vecStr +"]";
-    }
-    //TODO
-  }
-  return string("?");
-}
 
 immer::vector<Value>* vec (Value &v) {
   return (immer::vector<Value>*)v.ptr();
@@ -98,4 +79,101 @@ immer::vector<Value>* vec (Value &v) {
 
 Cell::~Cell () {
   delete next;
-};
+}
+
+
+
+//// Lizt
+
+/// C'tor & D'tor
+
+Lizt::Lizt (LiztT _type, void* _state)
+  : type(_type), state(_state) {}
+
+Lizt::~Lizt () {
+  switch (type) {
+    case P_Vec:
+      delete (queue<Value>*)state;
+      break;
+    case P_Range:
+      delete (Range*)state;
+      break;
+    case P_Map:
+      delete (Map*)state;
+      break;
+  }
+}
+
+Lizt::Map::~Map () {
+  for (auto s : sources)
+    delete s;
+}
+
+/// Factories
+
+//Accepts a Value of any type and converts it to a Lizt.
+//  If the Value is not a T_Vec or T_Lizt it returns a P_Cycle.
+Lizt* Lizt::list (Value v) {
+  switch (v.type) {
+    case T_Lizt: {
+      auto lizt = v.lizt();
+      v.data.ptr = nullptr;
+      return lizt;
+    }
+    case T_Vec: {
+      auto vect = vec(v);
+      auto q = new queue<Value>();
+      for (Value val : *vect)
+        q->push(val);
+      return new Lizt(P_Vec, q);
+    }
+  }
+  return cycle({v});
+}
+
+Lizt* Lizt::range (Range range) {
+  return new Lizt(P_Range, new Range(range));
+}
+
+Lizt* Lizt::cycle (vector<Value> v) {
+  return new Lizt(P_Cycle, new Cycle{v});
+}
+
+Lizt* Lizt::map (Cell* head, vector<Lizt*> sources) {
+  return new Lizt(P_Map, new Map{sources, head});
+}
+
+/// Methods
+
+bool Lizt::isEmpty () {
+  switch (type) {
+    case P_Vec:
+      return !((queue<Value>*)state)->size();
+    case P_Range: {
+      auto r = (Range*)state;
+      return r->step ? r->next >= r->to : false;
+    }
+    case P_Map: {
+      auto m = (Lizt::Map*)state;
+      for (argnum v = 0, vLen = m->sources.size(); v < vLen; ++v)
+        if (m->sources[v]->isEmpty())
+          return true;
+    }
+  }
+  return false;
+}
+
+bool Lizt::isInfinite () {
+  if (type == P_Range)
+    return !((Range*)state)->step;
+  if (type == P_Cycle)
+    return true;
+  if (type == P_Map) {
+    auto m = (Lizt::Map*)state;
+    for (argnum v = 0, vLen = m->sources.size(); v < vLen; ++v)
+      if (!m->sources[v]->isInfinite())
+        return false;
+    return true;
+  }
+  return false;
+}

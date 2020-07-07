@@ -30,3 +30,11 @@
 *.exe
 *.out
 *.app
+
+#Environment
+.vscode
+
+# Ephem
+other
+build
+immer

@@ -3,11 +3,13 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <queue>
 #include <immer/vector.hpp>
 #include "Enums.hpp"
 using namespace std;
 
 struct Cell;
+class Lizt;
 
 union Data {
   void*    ptr;
@@ -49,7 +51,7 @@ public:
   float    d32  ();
   string   str  ();
   Cell*    cell ();
-  string   toStr();
+  Lizt*    lizt ();
 };
 
 immer::vector<Value>* vec (Value&);
@@ -60,10 +62,45 @@ struct Cell {
   ~Cell ();
 };
 
-struct Range {
-  int32_t start;
-  int32_t end;
-  int32_t next;
-  Range (int32_t _start, int32_t _end) :
-    start(_start), end(_end), next(_start) {}
+
+
+enum LiztT : uint8_t {
+  P_Vec, P_Cycle, P_Range, P_Map, P_Take
+};
+
+//P_Vec   _state is queue<Value>*
+//P_Cycle _state is Cycle*
+//P_Range _state is Range*
+//P_Map   _state is Map*
+class Lizt {
+public:
+  struct Cycle {
+    vector<Value> items;
+    veclen i;
+  };
+  struct Range {
+    int32_t to    = 0;
+    int32_t step  = 0; //0 for infinity
+    int32_t next  = 0;
+  };
+  struct Map {
+    vector<Lizt*> sources;
+    Cell* head;
+    ~Map ();
+  };
+
+  const LiztT type;
+  const void* state;
+
+  ~Lizt ();
+  static Lizt* list  (Value);
+  static Lizt* range (Range);
+  static Lizt* cycle (vector<Value>);
+  static Lizt* map   (Cell*, vector<Lizt*>);
+  bool isEmpty ();
+  bool isInfinite ();
+
+private:
+
+  Lizt (LiztT, void*);
 };
