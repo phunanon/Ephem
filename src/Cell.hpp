@@ -26,18 +26,20 @@ union Data {
 };
 
 class Value {
-  uint16_t counter = 0;
-  void chooseCounter();
-public:
-  Data data;
-  Type type = T_N;
+  refnum _ref = 0;
+  Data _data = Data{};
+  Type _type = T_N;
 
+public:
   Value ();
-  Value (const Value&);
   Value (Data, Type);
+  Value (const Value&);
   Value& operator= (const Value&);
   ~Value ();
 
+  void     kill ();
+  Data     data ();
+  Type     type ();
   uint8_t  size ();
   bool     tru  ();
   Op       op   ();
@@ -89,8 +91,12 @@ public:
     ~Map ();
   };
 
-  const LiztT type;
-  const void* state;
+  refnum ref;
+  LiztT type;
+  void* state;
+
+  Lizt (const Lizt&);
+  Lizt& operator= (const Lizt&);
 
   ~Lizt ();
   static Lizt* list  (Value);

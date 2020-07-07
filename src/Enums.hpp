@@ -5,6 +5,7 @@
 typedef size_t   fid;    //Func ID/hash
 typedef uint8_t  argnum; //Parameter number
 typedef uint16_t veclen; //Vector length
+typedef uint16_t refnum; //ARC reference number
 
 enum Op : uint8_t {
   O_None, O_If, O_Add, O_Sub, O_Mul, O_Div,

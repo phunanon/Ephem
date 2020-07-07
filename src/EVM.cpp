@@ -43,17 +43,23 @@ Value EVM::o_If (Cell* cond, Cell* p) {
 Value EVM::o_Math (Cell* a, Cell* p, Op op) {
   Value firstVal = val(a, p);
   a = a->next;
-  const Type resultT = firstVal.type;
+  const Type resultT = firstVal.type();
   const bool isFloat = resultT == T_D32;
   uint32_t iResult;
-  memcpy(&iResult, &firstVal.data.u32, firstVal.size());
+  {
+    uint32_t d = firstVal.u32();
+    memcpy(&iResult, &d, firstVal.size());
+  }
   float fResult = *(float*)(&iResult);
   while (a) {
     Value v = val(a, p);
     uint32_t iNext = 0;
-    memcpy(&iNext, &v.data.u32, v.size());
+    {
+      uint32_t d = v.u32();
+      memcpy(&iNext, &d, v.size());
+    }
     if (isFloat) {
-      float fNext = v.type == T_D32 ? *(float*)(&iNext) : (float)iNext;
+      float fNext = v.type() == T_D32 ? *(float*)(&iNext) : (float)iNext;
       switch (op) {
         case O_Add: fResult += fNext; break;
         case O_Sub: fResult -= fNext; break;
@@ -61,7 +67,7 @@ Value EVM::o_Math (Cell* a, Cell* p, Op op) {
         case O_Div: fResult /= fNext; break;
       }
     } else {
-      if (v.type == T_D32) iNext = *(float*)(&iNext);
+      if (v.type() == T_D32) iNext = *(float*)(&iNext);
       switch (op) {
         case O_Add: iResult += iNext; break;
         case O_Sub: iResult -= iNext; break;
@@ -120,11 +126,11 @@ Value EVM::o_Map (Cell* a, Cell* p) {
   Cell* head;
   //Ensure function is an op, lambda, (or function) TODO
   {
-    Type t = a->value.type;
+    Type t = a->value.type();
     if (t == T_Lamb || t == T_Op) head = new Cell{a->value};
     else {
       Value v = val(a, p);
-      if (v.type != T_Lamb && v.type != T_Op)
+      if (v.type() != T_Lamb && v.type() != T_Op)
         return Value();
       head = new Cell{v};
     }
@@ -178,7 +184,7 @@ Value EVM::exe (Op op, Cell* a, Cell* p) {
 }
 
 Value EVM::val (Cell* a, Cell* p) {
-  Type t = a->value.type;
+  Type t = a->value.type();
   if (t == T_Cell || t == T_Lamb) {
     //Have lambdas use cell's next as parameter list
     if (t == T_Lamb)
@@ -202,7 +208,7 @@ Value EVM::val (Cell* a, Cell* p) {
 
 
 string EVM::toStr (Value v) {
-  switch (v.type) {
+  switch (v.type()) {
     case T_N:   return string("N");
     case T_U08: return to_string(v.u08());
     case T_S08: return string(1, v.s08());
@@ -260,9 +266,11 @@ Value EVM::liztNext (Lizt* l) {
         }
       }
       m->head->next = args;
+      //Create a temporary form Cell
       Cell form = Cell{Value(Data{.cell=m->head}, T_Cell)};
       Value v = val(&form);
-      form.value.data.ptr = m->head->next = nullptr;
+      form.value.kill(); //Ensure head is not destroyed with form
+      m->head->next = nullptr;
       delete args;
       return v;
     }

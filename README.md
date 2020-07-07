@@ -23,6 +23,7 @@ N
 **Concepts:**  
 - S-expressions
 - Dynamic
+- Automatic Reference Counting (ARC) memory management
 - Has REPL
 - Hotloadable (NYA)
 - Lazy
