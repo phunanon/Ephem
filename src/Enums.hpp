@@ -10,7 +10,7 @@ typedef uint16_t refnum; //ARC reference number
 enum Type : uint8_t {
   T_N, T_Op, T_Cell, T_Lamb, T_Func, T_Para, T_Var,
   T_U08, T_S08, T_U16, T_S16, T_U32, T_S32, T_D32,
-  T_Bool, T_Str, T_Vec, T_Lizt
+  T_Boo, T_Str, T_Vec, T_Lizt
 };
 
 enum Op : uint8_t {

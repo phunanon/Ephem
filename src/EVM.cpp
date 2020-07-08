@@ -130,17 +130,12 @@ Value EVM::o_Take (Cell* a, Cell* p) {
 Value EVM::o_Range (Cell* a, Cell* p) {
   int32_t from = 0, to = 0, step = a ? 1 : 0;
   auto n = numArgs(a);
-  switch (n) {
-    case 1:
-      to = val(a, p).s32();
-      break;
-    case 2:
-      from = val(a, p).s32();
-      to = val(a->next, p).s32();
-      break;
-    case 3:
+  if (n == 1) to = val(a, p).s32();
+  else if (n > 1) {
+    from = val(a, p).s32();
+    to = val(a->next, p).s32();
+    if (n == 3)
       step = val(a->next->next, p).s32();
-      break;
   }
   if (n != 3 && to < 0)
     step = -1;
@@ -292,6 +287,7 @@ string EVM::toStr (Value v) {
     case T_U32: return to_string(v.u32());
     case T_S32: return to_string(v.s32());
     case T_D32: return to_string(v.d32());
+    case T_Boo: return v.tru() ? "T" : "F";
     case T_Str: return v.str();
     case T_Vec: {
       auto vect = *vec(v);

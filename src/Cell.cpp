@@ -58,8 +58,8 @@ uint8_t Value::size () {
 }
 
 bool Value::tru () {
-  if (_type == T_N)    return false;
-  if (_type == T_Bool) return _data.tru;
+  if (_type == T_N)   return false;
+  if (_type == T_Boo) return _data.tru;
   return true;
 }
 Op Value::op () {
@@ -152,6 +152,7 @@ Lizt* Lizt::take (Take take) {
 
 Lizt* Lizt::range (Range range) {
   veclen len = range.to > 0 ? range.to - range.from : range.from - range.to;
+  if (len) len /= abs(range.step);
   if (!len) len = -1;
   return new Lizt(P_Range, len, new Range(range));
 }
