@@ -21,13 +21,17 @@ int main () {
       free(line);
     }
     auto parsed = Parser::parse(input);
-    for (auto func : parsed)
+    vm.removeFunc(0);
+    bool hasEntry = false;
+    for (auto func : parsed) {
+      if (func.first == 0) hasEntry = true;
       vm.addFunc(func.first, func.second);
-    {
+    }
+    if (hasEntry) {
       Cell* evaled = new Cell{vm.exe(0, previous)};
       delete previous;
       previous = evaled;
+      printf("%s\n", vm.toStr(evaled->value).c_str());
     }
-    printf("%s\n", vm.toStr(previous->value).c_str());
   }
 }

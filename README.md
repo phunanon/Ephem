@@ -14,6 +14,9 @@ N
 [0 2 4]
 > ((if T + /) 12 3)
 15
+> (fn double [a] (* a 2))
+> (map double (range 10))
+[0 2 4 6 8 10 12 14 16 18]
 ```
 
 ## Rationale
@@ -70,6 +73,17 @@ Execute the `build/ephem` binary.
 ### Functions
 
 ### Native operations
+
+`(if cond if-true) (if cond if-true if-false)`  
+
+`+ - * / mod`  
+e.g. `(+ 1 2 3)`
+
+`(= )`
+  O_Equit, O_Nequi, O_Equal, O_Nqual, O_GThan, O_LThan, O_GETo, O_LETo,
+  O_Vec, O_Skip, O_Take, O_Range, O_Cycle, O_Emit,
+  O_Map, O_Where,
+  O_Str, O_Print, O_Priln, O_Val, O_Do
 
 ## Design and characteristics
 

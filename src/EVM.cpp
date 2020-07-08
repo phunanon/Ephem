@@ -3,23 +3,25 @@
 #include <cstring>
 
 void EVM::addFunc (fid id, vector<Cell*> cells) {
-  Cell* next = new Cell();
-  for (auto c : cells) {
-    Cell* link = new Cell();
-    next->next = link;
-    link->value = Value(Data{.cell=c}, T_Cell);
-    next = link;
-  }
+  removeFunc(id);
+  funcs[id] = cells;
+}
+
+void EVM::removeFunc (fid id) {
   if (funcs.find(id) != funcs.end())
-    delete funcs[id];
-  funcs[id] = next;
+    for (auto cell : funcs[id])
+      delete cell;
+  funcs.erase(id);
 }
 
 
 Value EVM::exe (fid id, Cell* params) {
-  auto cell = funcs[id];
-  if (!cell) return Value();
-  return val(cell, params);
+  if (funcs.find(id) == funcs.end())
+    return Value();
+  Value ret;
+  for (auto cell : funcs[id])
+    ret = val(cell, params);
+  return ret;
 }
 
 
@@ -163,7 +165,7 @@ Value EVM::o_Emit (Cell* a, Cell* p) {
 //Ensure function is an op, lambda, (or function) TODO
 Cell* EVM::makeHead (Cell* a, Cell* p) {
   Type t = a->value.type();
-  if (t == T_Lamb || t == T_Op)
+  if (t == T_Lamb || t == T_Op || t == T_Func)
     return new Cell{a->value};
   Value v = val(a, p);
   if (v.type() != T_Lamb && v.type() != T_Op)
@@ -261,9 +263,11 @@ Value EVM::val (Cell* a, Cell* p) {
     //Have lambdas use cell's next as parameter list
     if (t == T_Lamb)
       p = a->next;
-    //Evaluate for an operation
+    //Evaluate for a function or operation
     Cell* head = a->value.cell();
     Value v = val(head, p);
+    if (v.type() == T_Func)
+      return exe(v.func(), head->next);
     Op op = v.op();
     //Either execute an op as part of a form,
     //  or return the value if it wasn't an op.

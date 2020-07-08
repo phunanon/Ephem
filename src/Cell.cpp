@@ -73,6 +73,7 @@ int16_t  Value::s16 () { return _data.s16; }
 uint32_t Value::u32 () { return _data.u32; }
 int32_t  Value::s32 () { return _data.s32; }
 float    Value::d32 () { return _data.d32; }
+fid      Value::func() { return _data.fID; }
 string   Value::str () { return *(string*)_data.ptr; }
 Lizt*    Value::lizt() { return (Lizt*)_data.ptr; }
 Cell*    Value::cell() { return (Cell*)_data.ptr; }

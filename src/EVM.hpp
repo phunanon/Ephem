@@ -8,11 +8,12 @@ using namespace std;
 class EVM {
 public:
   void addFunc (fid, vector<Cell*>);
+  void removeFunc (fid);
   Value exe (fid, Cell* = nullptr);
   string toStr (Value);
 
 private:
-  map<fid, Cell*> funcs = map<fid, Cell*>();
+  map<fid, vector<Cell*>> funcs = map<fid, vector<Cell*>>();
   Value exe (Op, Cell*, Cell*);
   Value val (Cell*, Cell* = nullptr);
   Value valAt (Cell*, Cell*, argnum);

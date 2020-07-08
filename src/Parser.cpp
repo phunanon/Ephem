@@ -244,7 +244,7 @@ Cell* cellise (deque<Token> &tokens, vector<string> paras) {
               break;
             }
           } { //Func
-            data.u32 = hash<string>{}(token.str);
+            data.fID = hash<string>{}(token.str);
             type = T_Func;
           }
           break;
@@ -273,13 +273,11 @@ pair<fid, vector<Cell*>> cellise (vector<Token> form) {
   if (form.size() > 1 && form[1].str == "fn") {
     id = hash<string>{}(form[2].str);
     //Collect param symbols
-    {
-      argnum t = 4;
-      //TODO: destructuring goes here
-      for (; form[t].type != Token::RSquare; ++t)
-        paras.push_back(form[t].str);
-      form = vector<Token>(&form[t+1], &form.back());
-    }
+    argnum t = 4;
+    //TODO: destructuring goes here
+    for (; form[t].type != Token::RSquare; ++t)
+      paras.push_back(form[t].str);
+    form = vector<Token>(&form[t+1], &form.back());
   }
   //Cellise all function forms, or the one entry form
   auto formsCells = vector<Cell*>();

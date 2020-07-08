@@ -23,6 +23,7 @@ union Data {
   uint32_t u32 = 0;
   int32_t  s32;
   float    d32;
+  fid      fID;
 };
 
 class Value {
@@ -51,6 +52,7 @@ public:
   uint32_t u32  ();
   int32_t  s32  ();
   float    d32  ();
+  fid      func ();
   string   str  ();
   Cell*    cell ();
   Lizt*    lizt ();
