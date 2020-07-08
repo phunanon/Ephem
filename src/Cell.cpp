@@ -58,7 +58,9 @@ uint8_t Value::size () {
 }
 
 bool Value::tru () {
-  return _data.tru && _type != T_N;
+  if (_type == T_N)    return false;
+  if (_type == T_Bool) return _data.tru;
+  return true;
 }
 Op Value::op () {
   return _type == T_Op ? _data.op : O_None;
@@ -90,7 +92,7 @@ Cell::~Cell () {
 
 /// C'tor, D'tor, Copies
 
-Lizt::Lizt (LiztT _type, lztlen _len, void* _state)
+Lizt::Lizt (LiztT _type, veclen _len, void* _state)
   : type(_type), len(_len), config(_state) {
   refs[ref = newRef()] = 1;
 }
@@ -112,15 +114,16 @@ Lizt::~Lizt () {
   if (!refs[ref] || --refs[ref]) return;
   switch (type) {
     case P_Vec:   delete (vector<Value>*)config; break;
-    case P_Cycle: delete (vector<Value>*)config; break;
-    case P_Range: delete (Range*)config;         break;
-    case P_Map:   delete (Map*)config;           break;
     case P_Take:  delete (Take*)config;          break;
+    case P_Range: delete (Range*)config;         break;
+    case P_Cycle: delete (vector<Value>*)config; break;
     case P_Emit:  delete (Value*)config;         break; 
+    case P_Map:   delete (Map*)config;           break;
   }
 }
 
 Lizt::Map::~Map () {
+  delete head;
   for (auto s : sources)
     delete s;
 }
@@ -143,12 +146,12 @@ Lizt* Lizt::list (Value v) {
 }
 
 Lizt* Lizt::take (Take take) {
-  lztlen len = take.take != -1 ? take.take : take.lizt->len;
+  veclen len = take.take != -1 ? take.take : take.lizt->len;
   return new Lizt(P_Take, len, new Take(take));
 }
 
 Lizt* Lizt::range (Range range) {
-  lztlen len = range.to > 0 ? range.to - range.from : range.from - range.to;
+  veclen len = range.to > 0 ? range.to - range.from : range.from - range.to;
   if (!len) len = -1;
   return new Lizt(P_Range, len, new Range(range));
 }
@@ -157,14 +160,14 @@ Lizt* Lizt::cycle (vector<Value> v) {
   return new Lizt(P_Cycle, -1, new vector<Value>{v});
 }
 
-Lizt* Lizt::emit (Value v, lztlen len) {
+Lizt* Lizt::emit (Value v, veclen len) {
   return new Lizt(P_Emit, len, new Value(v));
 }
 
 Lizt* Lizt::map (Cell* head, vector<Lizt*> sources) {
   //Check if all are infinite
-  lztlen smallest, maximum;
-  smallest = maximum = numeric_limits<lztlen>::max();
+  veclen smallest, maximum;
+  smallest = maximum = numeric_limits<veclen>::max();
   for (argnum v = 0, vLen = sources.size(); v < vLen; ++v)
     if (!sources[v]->isInf())
       if (sources[v]->len < smallest)

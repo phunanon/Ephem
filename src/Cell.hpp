@@ -67,7 +67,8 @@ struct Cell {
 
 
 enum LiztT : uint8_t {
-  P_Vec, P_Take, P_Cycle, P_Range, P_Map, P_Emit
+  P_Vec, P_Take, P_Range, P_Cycle, P_Emit,
+  P_Map
 };
 
 class Lizt {
@@ -77,20 +78,20 @@ public:
     const int32_t to   = 0; // Equal for infinite
     const int32_t step = 0;
   };
-  struct Map {
-    vector<Lizt*> sources;
-    Cell* head;
-    ~Map ();
-  };
   struct Take {
     Lizt*   lizt;
     int32_t skip;
     int32_t take; //Negative for infinite
   };
+  struct Map {
+    vector<Lizt*> sources;
+    Cell* head;
+    ~Map ();
+  };
 
   refnum ref;
   LiztT type;
-  lztlen len;
+  veclen len;
   //Config types:
   //  P_Vec:vector<Value>* P_Cycle:vector<Value>* P_Range:Range*
   //  P_Map:Map* P_Take:Take* P_Repeat:Value
@@ -104,11 +105,11 @@ public:
   static Lizt* take  (Take);
   static Lizt* range (Range);
   static Lizt* cycle (vector<Value>);
-  static Lizt* emit  (Value, lztlen);
+  static Lizt* emit  (Value, veclen);
   static Lizt* map   (Cell*, vector<Lizt*>);
   bool isInf ();
 
 private:
 
-  Lizt (LiztT, lztlen, void*);
+  Lizt (LiztT, veclen, void*);
 };

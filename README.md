@@ -75,7 +75,7 @@ Execute the `build/ephem` binary.
 
 ### Enumerables and laziness
 
-**Examples**
+**Examples of lazy enumerables**
 
 ```clj
 (range 5 10)                  => [5 6 7 8 9]
@@ -90,6 +90,13 @@ Execute the `build/ephem` binary.
 (take 5 (skip 4 (range)))     => [4 5 6 7 8]
 (take 5 4 (range))            => [4 5 6 7 8]
 (emit 3 5)                    => [3 3 3 3 3]
+```
+
+**Examples of immediate collections**
+
+```clj
+(where odd? (range -8))       => [-1 -3 -5 -7] immediate
+(where even? 4 3 (range))     => [6 8 10 12] immediate
 ```
 
 ### Immutable vectors

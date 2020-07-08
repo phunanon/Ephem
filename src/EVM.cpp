@@ -24,7 +24,7 @@ Value EVM::exe (fid id, Cell* params) {
 
 
 //Returns an evaluated traversal across cell->next, or nil
-Value EVM::nextValBy (Cell* a, Cell* p, argnum by) {
+Value EVM::valAt (Cell* a, Cell* p, argnum by) {
   if (by++)
     while (--by && a->next)
       a = a->next;
@@ -42,7 +42,7 @@ argnum numArgs (Cell* a) {
 
 
 Value EVM::o_If (Cell* cond, Cell* p) {
-  return nextValBy(cond, p, val(cond, p).tru() ? 1 : 2);
+  return valAt(cond, p, val(cond, p).tru() ? 1 : 2);
 }
 
 
@@ -160,28 +160,58 @@ Value EVM::o_Cycle (Cell* a, Cell* p) {
 
 Value EVM::o_Emit (Cell* a, Cell* p) {
   if (!a) return Value();
-  lztlen len = a->next ? val(a->next, p).s32() : -1;
+  veclen len = a->next ? val(a->next, p).s32() : -1;
   return Value(Data{.ptr=Lizt::emit(val(a, p), len)}, T_Lizt);
 }
 
 
+//Ensure function is an op, lambda, (or function) TODO
+Cell* EVM::makeHead (Cell* a, Cell* p) {
+  Type t = a->value.type();
+  if (t == T_Lamb || t == T_Op)
+    return new Cell{a->value};
+  Value v = val(a, p);
+  if (v.type() != T_Lamb && v.type() != T_Op)
+    return nullptr;
+  return new Cell{v};
+}
+
+
 Value EVM::o_Map (Cell* a, Cell* p) {
-  Cell* head;
-  //Ensure function is an op, lambda, (or function) TODO
-  {
-    Type t = a->value.type();
-    if (t == T_Lamb || t == T_Op) head = new Cell{a->value};
-    else {
-      Value v = val(a, p);
-      if (v.type() != T_Lamb && v.type() != T_Op)
-        return Value();
-      head = new Cell{v};
-    }
-  }
+  Cell* head = makeHead(a, p);
+  if (!head) return Value();
   auto vectors = vector<Lizt*>();
   while ((a = a->next))
     vectors.push_back(Lizt::list(val(a, p)));
   return Value(Data{.ptr=Lizt::map(head, vectors)}, T_Lizt);
+}
+
+
+//Returns a filtered T_Vec from a T_Lizt
+// e.g. (where f lizt) (where f take lizt) (where f take skip lizt)
+Value EVM::o_Where (Cell* a, Cell* p) {
+  Cell* head = makeHead(a, p);
+  if (!head) return Value();
+  auto n = numArgs(a);
+  Lizt* lizt = Lizt::list(valAt(a, p, n - 1));
+  if (lizt->isInf()) return Value();
+  veclen skipN = n == 4 ? valAt(a, p, 2).s32() : 0;
+  uint   takeN = n >= 3 ? valAt(a, p, 1).s32() : lizt->len;
+  auto list = immer::vector<Value>();
+  for (veclen i = skipN; i < lizt->len; ++i) {
+    Value testVal = liztAt(lizt, i);
+    Cell valCell = Cell{testVal};
+    head->next = &valCell;
+    Cell form = Cell{Value(Data{.cell=head}, T_Cell)};
+    Value v = val(&form);
+    form.value.kill(); //Ensure head is not destroyed with form
+    if (!v.tru()) continue;
+    list = list.push_back(testVal);
+    if (list.size() == takeN) break;
+  }
+  head->next = nullptr;
+  delete head;
+  return Value(Data{.ptr=new immer::vector<Value>(list)}, T_Vec);
 }
 
 
@@ -221,6 +251,7 @@ Value EVM::exe (Op op, Cell* a, Cell* p) {
     case O_Cycle: return o_Cycle(a, p);
     case O_Emit:  return o_Emit(a, p);
     case O_Map:   return o_Map(a, p);
+    case O_Where: return o_Where(a, p);
     case O_Str:   return o_Str(a, p);
     case O_Print: case O_Priln:
                   return o_Print(a, p, op == O_Priln);
@@ -246,7 +277,7 @@ Value EVM::val (Cell* a, Cell* p) {
   }
   //Return parameter or nil
   if (t == T_Para)
-    return p ? nextValBy(p, nullptr, a->value.u08()) : Value();
+    return p ? valAt(p, nullptr, a->value.u08()) : Value();
   //TODO: variables
   return a->value;
 }
@@ -267,7 +298,7 @@ string EVM::toStr (Value v) {
       auto vLen = vect.size();
       if (!vLen) return "[]";
       string vecStr = toStr((Value)vect[0]);
-      for (veclen i = 1; i < vLen; ++i)
+      for (uint i = 1; i < vLen; ++i)
         vecStr += " " + toStr((Value)vect[i]);
       return "["+ vecStr +"]";
     }
@@ -278,7 +309,7 @@ string EVM::toStr (Value v) {
 }
 
 //Returns next value of the lazy list
-Value EVM::liztAt (Lizt* l, lztlen at) {
+Value EVM::liztAt (Lizt* l, veclen at) {
   switch (l->type) {
     case LiztT::P_Vec: {
       auto list = (vector<Value>*)l->config;
@@ -324,7 +355,7 @@ Value EVM::liztAt (Lizt* l, lztlen at) {
 }
 
 //Returns remaining Lizt items as T_Vec
-Value EVM::liztFrom (Lizt* l, lztlen from) {
+Value EVM::liztFrom (Lizt* l, veclen from) {
   if (l->isInf()) return Value();
   auto list = immer::vector<Value>();
   for (auto i = from; i < l->len; ++i)

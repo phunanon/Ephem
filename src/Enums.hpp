@@ -4,8 +4,7 @@
 
 typedef size_t   fid;    //Func ID/hash
 typedef uint8_t  argnum; //Parameter number
-typedef int32_t  lztlen; //Lizt len
-typedef uint16_t veclen; //Vector length
+typedef int32_t  veclen; //Vec or Lizt len
 typedef uint16_t refnum; //ARC reference number
 
 enum Type : uint8_t {
@@ -17,13 +16,13 @@ enum Type : uint8_t {
 enum Op : uint8_t {
   O_None, O_If, O_Add, O_Sub, O_Mul, O_Div,
   O_Vec, O_Skip, O_Take, O_Range, O_Cycle, O_Emit,
-  O_Map,
+  O_Map, O_Where,
   O_Str, O_Print, O_Priln, O_Val, O_Do
 };
 
 const char* const ops[] = {
   "none", "if", "+", "-", "*", "/",
   "vec", "skip", "take", "range", "cycle", "emit",
-  "map",
+  "map", "where",
   "str", "print", "println", "val", "do", 0
 };
