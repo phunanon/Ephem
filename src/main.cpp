@@ -1,11 +1,22 @@
 #include <string>
 #include <vector>
+#include <fstream>
+#include <iterator>
 #include "linenoise/linenoise.h"
 #include "Parser.hpp"
 #include "EVM.hpp"
 using namespace std;
 
-void vmSession () {
+bool parseAndLoad (EVM &vm, string input) {
+  bool hasEntry = false;
+  for (auto func : Parser::parse(input)) {
+    hasEntry |= !func.first;
+    vm.addFunc(func.first, func.second);
+  }
+  return hasEntry;
+}
+
+void repl () {
   printf("Ephem REPL. %% gives previous result. Arrow keys navigate history/entry. q or ^C to quit.\n");
   EVM vm = EVM();
   Cell* previous = nullptr;
@@ -20,14 +31,8 @@ void vmSession () {
       free(line);
       if (input == "q") break;
     }
-    auto parsed = Parser::parse(input);
     vm.removeFunc(0);
-    bool hasEntry = false;
-    for (auto func : parsed) {
-      if (func.first == 0) hasEntry = true;
-      vm.addFunc(func.first, func.second);
-    }
-    if (hasEntry) {
+    if (parseAndLoad(vm, input)) {
       Cell* evaled = new Cell{vm.exeFunc(0, previous)};
       delete previous;
       previous = evaled;
@@ -37,9 +42,16 @@ void vmSession () {
   delete previous;
 }
 
-int main () {
-  vmSession();
+int main (int argc, char *argv[]) {
+  if (argc > 1) {
+    ifstream infile{string(argv[1])};
+    EVM vm = EVM();
+    parseAndLoad(vm, {istreambuf_iterator<char>(infile), istreambuf_iterator<char>()});
+    vm.exeFunc(0, nullptr);
+  } else repl();
+
   if (Cell::checkMemLeak())
     printf("Warning: ARC memory leak detected.\n");
+  
   return 0;
 }

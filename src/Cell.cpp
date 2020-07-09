@@ -2,9 +2,10 @@
 #include <limits>
 
 static uint8_t refs[NUM_OBJ] = {0};
+refnum leftmostRef = 0;
 
 static refnum newRef () {
-  refnum ref = 0;
+  refnum ref = leftmostRef++;
   while (refs[ref] && ref < NUM_OBJ)
     ++ref;
   return ref;
@@ -40,6 +41,8 @@ Value::~Value () {
     case T_Vec:  delete (immer::vector<Value>*)_data.ptr; break;
     case T_Lizt: delete (Lizt*)_data.ptr; break;
   }
+  if (_ref < leftmostRef)
+    leftmostRef = _ref;
 }
 
 
@@ -131,6 +134,8 @@ Lizt::~Lizt () {
     case P_Emit:  delete (Value*)config;         break; 
     case P_Map:   delete (Map*)config;           break;
   }
+  if (ref < leftmostRef)
+    leftmostRef = ref;
 }
 
 Lizt::Map::~Map () {
