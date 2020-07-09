@@ -5,6 +5,7 @@
 #include <vector>
 #include <queue>
 #include <immer/vector.hpp>
+#include <immer/vector_transient.hpp>
 #include "Enums.hpp"
 using namespace std;
 
@@ -64,6 +65,7 @@ struct Cell {
   Value value;
   Cell* next = nullptr;
   ~Cell ();
+  static bool checkMemLeak();
 };
 
 
@@ -84,6 +86,7 @@ public:
     Lizt*   lizt;
     int32_t skip;
     int32_t take; //Negative for infinite
+    ~Take ();
   };
   struct Map {
     vector<Lizt*> sources;
@@ -104,7 +107,7 @@ public:
 
   ~Lizt ();
   static Lizt* list  (Value);
-  static Lizt* take  (Take);
+  static Lizt* take  (Take*);
   static Lizt* range (Range);
   static Lizt* cycle (vector<Value>);
   static Lizt* emit  (Value, veclen);

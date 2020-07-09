@@ -2,6 +2,11 @@
 #include <cstdint>
 #include <cstring>
 
+EVM::~EVM () {
+  for (auto f : funcs)
+    removeFunc(f.first);
+}
+
 void EVM::addFunc (fid id, vector<Cell*> cells) {
   removeFunc(id);
   funcs[id] = cells;
@@ -106,7 +111,7 @@ Value EVM::o_Vec (Cell* a) {
 //  e.g. (skip n vec)
 Value EVM::o_Skip (Cell* a) {
   if (numArgs(a) != 2) return Value();
-  auto take = Lizt::Take{Lizt::list(a->next->value), a->value.s32(), -1};
+  auto take = new Lizt::Take{Lizt::list(a->next->value), a->value.s32(), -1};
   return Value(Data{.ptr=Lizt::take(take)}, T_Lizt);
 }
 
@@ -122,7 +127,7 @@ Value EVM::o_Take (Cell* a) {
   if (!lizt->isInf() && skipN + takeN > lizt->len)
     takeN = lizt->len - skipN;
   if (takeN < 0) takeN = 0;
-  auto take = Lizt::Take{lizt, skipN, takeN};
+  auto take = new Lizt::Take{lizt, skipN, takeN};
   return Value(Data{.ptr=Lizt::take(take)}, T_Lizt);
 }
 
@@ -194,21 +199,21 @@ Value EVM::o_Where (Cell* a) {
   if (lizt->isInf()) return Value();
   veclen skipN = n == 4 ? valAt(a, 2).s32() : 0;
   uint   takeN = n >= 3 ? valAt(a, 1).s32() : lizt->len;
-  auto list = immer::vector<Value>();
-  for (veclen i = skipN; i < lizt->len; ++i) {
+  auto list = immer::vector<Value>().transient();
+  Cell form = Cell{Value(Data{.cell=head}, T_Cell)};
+  for (veclen i = skipN; i < lizt->len && list.size() < takeN; ++i) {
     Value testVal = liztAt(lizt, i);
     Cell valCell = Cell{testVal};
     head->next = &valCell;
-    Cell form = Cell{Value(Data{.cell=head}, T_Cell)};
     Value v = eval(&form);
-    form.value.kill(); //Ensure head is not destroyed with form
     if (!v.tru()) continue;
-    list = list.push_back(testVal);
-    if (list.size() == takeN) break;
+    list.push_back(testVal);
   }
   head->next = nullptr;
-  delete head;
-  return Value(Data{.ptr=new immer::vector<Value>(list)}, T_Vec);
+  delete lizt;
+  auto iVec = new immer::vector<Value>(list.persistent());
+  return Value(Data{.ptr=iVec}, T_Vec);
+}
 }
 
 
@@ -236,7 +241,7 @@ Value EVM::o_Val (Cell* a) {
 }
 
 
-Value EVM::exeOp (Op op, Cell* a, Cell* p) {
+Value EVM::exeOp (Op op, Cell* a) {
   switch (op) {
     case O_Add: case O_Sub: case O_Mul: case O_Div:
                   return o_Math(a, op);
@@ -269,8 +274,11 @@ Value EVM::eval (Cell* a, Cell* p) {
     Value headVal = eval(a, p);
     head = arg = new Cell{headVal};
     //Handle short-circuited forms
-    if (head->value.op() == O_If)
-      return eval(cellAt(a, eval(a->next, p).tru() ? 2 : 3), p);
+    if (head->value.op() == O_If) {
+      auto ret = eval(cellAt(a, eval(a->next, p).tru() ? 2 : 3), p);
+      delete head;
+      return ret;
+    }
     //Continue collecting arguments
     while ((a = a->next)) {
       arg = arg->next ? arg->next : arg;
@@ -280,7 +288,7 @@ Value EVM::eval (Cell* a, Cell* p) {
     auto ret = Value();
     if (head->value.type() == T_Op)
       ret = head->value.op()
-        ? exeOp(head->value.op(), head->next, p)
+        ? exeOp(head->value.op(), head->next)
         : head->value; //This can happen with REPL non-form evals
     else
     if (head->value.type() == T_Lamb) {
@@ -373,8 +381,8 @@ Value EVM::liztAt (Lizt* l, veclen at) {
 //Returns remaining Lizt items as T_Vec
 Value EVM::liztFrom (Lizt* l, veclen from) {
   if (l->isInf()) return Value();
-  auto list = immer::vector<Value>();
+  auto list = immer::vector<Value>().transient();
   for (auto i = from; i < l->len; ++i)
-    list = list.push_back(liztAt(l, i));
-  return Value(Data{.ptr=new immer::vector<Value>(list)}, T_Vec);
+    list.push_back(liztAt(l, i));
+  return Value(Data{.ptr=new immer::vector<Value>(list.persistent())}, T_Vec);
 }

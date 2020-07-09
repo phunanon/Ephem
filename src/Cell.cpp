@@ -1,7 +1,6 @@
 #include "Cell.hpp"
 #include <limits>
 
-#define NUM_OBJ (refnum)2048
 static uint8_t refs[NUM_OBJ] = {0};
 
 static refnum newRef () {
@@ -11,7 +10,9 @@ static refnum newRef () {
   return ref;
 }
 
-Value::Value () {}
+Value::Value () {
+  refs[_ref = newRef()] = 1;
+}
 
 Value::Value (Data d, Type t) : _data(d), _type(t) {
   refs[_ref = newRef()] = 1;
@@ -21,6 +22,7 @@ Value::Value (const Value& obj)
   ++refs[_ref];
 }
 Value& Value::operator= (const Value& obj) {
+  this->~Value();
   _data = obj._data;
   _type = obj._type;
   ++refs[_ref = obj._ref];
@@ -83,8 +85,16 @@ immer::vector<Value>* vec (Value &v) {
   return (immer::vector<Value>*)v.ptr();
 }
 
+
 Cell::~Cell () {
   delete next;
+}
+
+bool Cell::checkMemLeak () {
+  refnum ref = 0;
+  while (!refs[ref] && ref < NUM_OBJ)
+    ++ref;
+  return ref != NUM_OBJ;
 }
 
 
@@ -129,6 +139,10 @@ Lizt::Map::~Map () {
     delete s;
 }
 
+Lizt::Take::~Take () {
+  delete lizt;
+}
+
 /// Factories
 
 //Accepts a Value of any type and converts it to a Lizt.
@@ -146,9 +160,9 @@ Lizt* Lizt::list (Value v) {
   return emit(v, -1);
 }
 
-Lizt* Lizt::take (Take take) {
-  veclen len = take.take != -1 ? take.take : take.lizt->len;
-  return new Lizt(P_Take, len, new Take(take));
+Lizt* Lizt::take (Take* take) {
+  veclen len = take->take != -1 ? take->take : take->lizt->len;
+  return new Lizt(P_Take, len, take);
 }
 
 Lizt* Lizt::range (Range range) {

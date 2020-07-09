@@ -7,6 +7,7 @@ using namespace std;
 
 class EVM {
 public:
+  ~EVM ();
   void addFunc (fid, vector<Cell*>);
   void removeFunc (fid);
   Value exeFunc (fid, Cell* = nullptr);
@@ -14,7 +15,7 @@ public:
 
 private:
   map<fid, vector<Cell*>> funcs = map<fid, vector<Cell*>>();
-  Value exeOp (Op, Cell*, Cell*);
+  Value exeOp (Op, Cell*);
   Value eval (Cell*, Cell* = nullptr);
   Value valAt (Cell*, argnum);
   Cell* cellAt (Cell*, argnum);

@@ -7,6 +7,8 @@ typedef uint8_t  argnum; //Parameter number
 typedef int32_t  veclen; //Vec or Lizt len
 typedef uint16_t refnum; //ARC reference number
 
+const refnum NUM_OBJ = 20'000;
+
 enum Type : uint8_t {
   T_N, T_Op, T_Cell, T_Lamb, T_Func, T_Para, T_Var,
   T_U08, T_S08, T_U16, T_S16, T_U32, T_S32, T_D32,
