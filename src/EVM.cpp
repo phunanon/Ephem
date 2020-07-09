@@ -26,7 +26,7 @@ Value EVM::exeFunc (fid id, Cell* params) {
 
 
 //Returns value after traversal across cell->next, or nil
-Value EVM::valAt (Cell* a, Cell* p, argnum by) {
+Value EVM::valAt (Cell* a, argnum by) {
   a = cellAt(a, by);
   return a ? a->value : Value();
 }
@@ -48,7 +48,7 @@ argnum numArgs (Cell* a) {
 }
 
 
-Value EVM::o_Math (Cell* a, Cell* p, Op op) {
+Value EVM::o_Math (Cell* a, Op op) {
   Value firstVal = a->value;
   a = a->next;
   const Type resultT = firstVal.type();
@@ -91,7 +91,7 @@ Value EVM::o_Math (Cell* a, Cell* p, Op op) {
 }
 
 
-Value EVM::o_Vec (Cell* a, Cell* p) {
+Value EVM::o_Vec (Cell* a) {
   auto vect = immer::vector<Value>();
   while (a) {
     vect = vect.push_back(a->value);
@@ -104,7 +104,7 @@ Value EVM::o_Vec (Cell* a, Cell* p) {
 
 //Returns a skip Lizt.
 //  e.g. (skip n vec)
-Value EVM::o_Skip (Cell* a, Cell* p) {
+Value EVM::o_Skip (Cell* a) {
   if (numArgs(a) != 2) return Value();
   auto take = Lizt::Take{Lizt::list(a->next->value), a->value.s32(), -1};
   return Value(Data{.ptr=Lizt::take(take)}, T_Lizt);
@@ -113,12 +113,12 @@ Value EVM::o_Skip (Cell* a, Cell* p) {
 
 //Returns a skip/take Lizt.
 //  e.g. (take n vec) (take n skip vec)
-Value EVM::o_Take (Cell* a, Cell* p) {
+Value EVM::o_Take (Cell* a) {
   argnum n = numArgs(a);
   if (n < 2) return Value();
   auto takeN = a->value.s32();
   auto skipN = n == 3 ? a->next->value.s32() : 0;
-  Lizt* lizt = Lizt::list(n == 2 ? a->next->value : a->next->next->value);
+  Lizt* lizt = Lizt::list(valAt(a, n == 2 ? 1 : 2));
   if (!lizt->isInf() && skipN + takeN > lizt->len)
     takeN = lizt->len - skipN;
   if (takeN < 0) takeN = 0;
@@ -129,7 +129,7 @@ Value EVM::o_Take (Cell* a, Cell* p) {
 
 //Returns a range Lizt.
 //  e.g. (range) (range to) (range from to) (range from to step)
-Value EVM::o_Range (Cell* a, Cell* p) {
+Value EVM::o_Range (Cell* a) {
   int32_t from = 0, to = 0, step = a ? 1 : 0;
   auto n = numArgs(a);
   if (n == 1) to = a->value.s32();
@@ -145,7 +145,7 @@ Value EVM::o_Range (Cell* a, Cell* p) {
 }
 
 
-Value EVM::o_Cycle (Cell* a, Cell* p) {
+Value EVM::o_Cycle (Cell* a) {
   auto vals = vector<Value>();
   while (a) {
     vals.push_back(a->value);
@@ -155,7 +155,7 @@ Value EVM::o_Cycle (Cell* a, Cell* p) {
 }
 
 
-Value EVM::o_Emit (Cell* a, Cell* p) {
+Value EVM::o_Emit (Cell* a) {
   if (!a) return Value();
   veclen len = a->next ? a->next->value.s32() : -1;
   return Value(Data{.ptr=Lizt::emit(a->value, len)}, T_Lizt);
@@ -163,7 +163,7 @@ Value EVM::o_Emit (Cell* a, Cell* p) {
 
 
 //Ensure function is an op, lambda, or function
-Cell* EVM::makeHead (Cell* a, Cell* p) {
+Cell* EVM::makeHead (Cell* a) {
   Type t = a->value.type();
   if (t == T_Lamb || t == T_Op || t == T_Func)
     return new Cell{a->value};
@@ -174,8 +174,8 @@ Cell* EVM::makeHead (Cell* a, Cell* p) {
 }
 
 
-Value EVM::o_Map (Cell* a, Cell* p) {
-  Cell* head = makeHead(a, p);
+Value EVM::o_Map (Cell* a) {
+  Cell* head = makeHead(a);
   if (!head) return Value(); //f wasn't callable
   auto vectors = vector<Lizt*>();
   while ((a = a->next))
@@ -186,14 +186,14 @@ Value EVM::o_Map (Cell* a, Cell* p) {
 
 //Returns a filtered T_Vec from a T_Lizt
 // e.g. (where f lizt) (where f take lizt) (where f take skip lizt)
-Value EVM::o_Where (Cell* a, Cell* p) {
-  Cell* head = makeHead(a, p);
+Value EVM::o_Where (Cell* a) {
+  Cell* head = makeHead(a);
   if (!head) return Value();
   auto n = numArgs(a);
-  Lizt* lizt = Lizt::list(valAt(a, p, n - 1));
+  Lizt* lizt = Lizt::list(valAt(a, n - 1));
   if (lizt->isInf()) return Value();
-  veclen skipN = n == 4 ? valAt(a, p, 2).s32() : 0;
-  uint   takeN = n >= 3 ? valAt(a, p, 1).s32() : lizt->len;
+  veclen skipN = n == 4 ? valAt(a, 2).s32() : 0;
+  uint   takeN = n >= 3 ? valAt(a, 1).s32() : lizt->len;
   auto list = immer::vector<Value>();
   for (veclen i = skipN; i < lizt->len; ++i) {
     Value testVal = liztAt(lizt, i);
@@ -212,7 +212,7 @@ Value EVM::o_Where (Cell* a, Cell* p) {
 }
 
 
-Value EVM::o_Str (Cell* a, Cell* p) {
+Value EVM::o_Str (Cell* a) {
   auto str = new string();
   while (a) {
     *str += toStr(a->value);
@@ -222,8 +222,8 @@ Value EVM::o_Str (Cell* a, Cell* p) {
 }
 
 
-Value EVM::o_Print (Cell* a, Cell* p, bool nl) {
-  Value v = o_Str(a, p);
+Value EVM::o_Print (Cell* a, bool nl) {
+  Value v = o_Str(a);
   printf("%s", v.str().c_str());
   if (nl) printf("\n");
   else fflush(stdout);
@@ -231,7 +231,7 @@ Value EVM::o_Print (Cell* a, Cell* p, bool nl) {
 }
 
 
-Value EVM::o_Val (Cell* a, Cell* p) {
+Value EVM::o_Val (Cell* a) {
   return a->value;
 }
 
@@ -239,19 +239,19 @@ Value EVM::o_Val (Cell* a, Cell* p) {
 Value EVM::exeOp (Op op, Cell* a, Cell* p) {
   switch (op) {
     case O_Add: case O_Sub: case O_Mul: case O_Div:
-                  return o_Math(a, p, op);
-    case O_Vec:   return o_Vec(a, p);
-    case O_Skip:  return o_Skip(a, p);
-    case O_Take:  return o_Take(a, p);
-    case O_Range: return o_Range(a, p);
-    case O_Cycle: return o_Cycle(a, p);
-    case O_Emit:  return o_Emit(a, p);
-    case O_Map:   return o_Map(a, p);
-    case O_Where: return o_Where(a, p);
-    case O_Str:   return o_Str(a, p);
+                  return o_Math(a, op);
+    case O_Vec:   return o_Vec(a);
+    case O_Skip:  return o_Skip(a);
+    case O_Take:  return o_Take(a);
+    case O_Range: return o_Range(a);
+    case O_Cycle: return o_Cycle(a);
+    case O_Emit:  return o_Emit(a);
+    case O_Map:   return o_Map(a);
+    case O_Where: return o_Where(a);
+    case O_Str:   return o_Str(a);
     case O_Print: case O_Priln:
-                  return o_Print(a, p, op == O_Priln);
-    case O_Val:   return o_Val(a, p);
+                  return o_Print(a, op == O_Priln);
+    case O_Val:   return o_Val(a);
   }
   return Value();
 }
@@ -295,7 +295,7 @@ Value EVM::eval (Cell* a, Cell* p) {
   }
   //Return parameter or nil
   if (t == T_Para)
-    return p ? valAt(p, nullptr, a->value.u08()) : Value();
+    return p ? valAt(p, a->value.u08()) : Value();
   //TODO: variables
   return a->value;
 }

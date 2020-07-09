@@ -3,6 +3,7 @@
 | ![Ephem logo](media/Ephem-logo.png) | Dynamic s-expression programming language for PC, with delusions of grandeur. |
 | - | - |
 
+Descendant of the completed Arduino/PC stack-based dynamic s-expression programming language [Chika](https://phunanon.github.com/Chika).
 
 ## Examples
 
