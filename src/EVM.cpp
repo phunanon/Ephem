@@ -15,24 +15,29 @@ void EVM::removeFunc (fid id) {
 }
 
 
-Value EVM::exe (fid id, Cell* params) {
+Value EVM::exeFunc (fid id, Cell* params) {
   if (funcs.find(id) == funcs.end())
     return Value();
   Value ret;
   for (auto cell : funcs[id])
-    ret = val(cell, params);
+    ret = eval(cell, params);
   return ret;
 }
 
 
-//Returns an evaluated traversal across cell->next, or nil
+//Returns value after traversal across cell->next, or nil
 Value EVM::valAt (Cell* a, Cell* p, argnum by) {
+  a = cellAt(a, by);
+  return a ? a->value : Value();
+}
+
+//Returns Cell* after traversal across cell->next, or nullptr
+Cell* EVM::cellAt (Cell* a, argnum by) {
   if (by++)
     while (--by && a->next)
       a = a->next;
-  else
-    return val(a, p);
-  return by ? Value() : val(a, p);
+  else return a;
+  return by ? nullptr : a;
 }
 
 argnum numArgs (Cell* a) {
@@ -43,13 +48,8 @@ argnum numArgs (Cell* a) {
 }
 
 
-Value EVM::o_If (Cell* cond, Cell* p) {
-  return valAt(cond, p, val(cond, p).tru() ? 1 : 2);
-}
-
-
 Value EVM::o_Math (Cell* a, Cell* p, Op op) {
-  Value firstVal = val(a, p);
+  Value firstVal = a->value;
   a = a->next;
   const Type resultT = firstVal.type();
   const bool isFloat = resultT == T_D32;
@@ -60,7 +60,7 @@ Value EVM::o_Math (Cell* a, Cell* p, Op op) {
   }
   float fResult = *(float*)(&iResult);
   while (a) {
-    Value v = val(a, p);
+    Value v = a->value;
     uint32_t iNext = 0;
     {
       uint32_t d = v.u32();
@@ -94,7 +94,7 @@ Value EVM::o_Math (Cell* a, Cell* p, Op op) {
 Value EVM::o_Vec (Cell* a, Cell* p) {
   auto vect = immer::vector<Value>();
   while (a) {
-    vect = vect.push_back(val(a, p));
+    vect = vect.push_back(a->value);
     a = a->next;
   }
   auto vectPtr = new immer::vector<Value>(vect);
@@ -106,7 +106,7 @@ Value EVM::o_Vec (Cell* a, Cell* p) {
 //  e.g. (skip n vec)
 Value EVM::o_Skip (Cell* a, Cell* p) {
   if (numArgs(a) != 2) return Value();
-  auto take = Lizt::Take{Lizt::list(val(a->next, p)), val(a, p).s32(), -1};
+  auto take = Lizt::Take{Lizt::list(a->next->value), a->value.s32(), -1};
   return Value(Data{.ptr=Lizt::take(take)}, T_Lizt);
 }
 
@@ -116,9 +116,9 @@ Value EVM::o_Skip (Cell* a, Cell* p) {
 Value EVM::o_Take (Cell* a, Cell* p) {
   argnum n = numArgs(a);
   if (n < 2) return Value();
-  auto takeN = val(a, p).s32();
-  auto skipN = n == 3 ? val(a->next, p).s32() : 0;
-  Lizt* lizt = Lizt::list(val(n == 2 ? a->next : a->next->next, p));
+  auto takeN = a->value.s32();
+  auto skipN = n == 3 ? a->next->value.s32() : 0;
+  Lizt* lizt = Lizt::list(n == 2 ? a->next->value : a->next->next->value);
   if (!lizt->isInf() && skipN + takeN > lizt->len)
     takeN = lizt->len - skipN;
   if (takeN < 0) takeN = 0;
@@ -132,12 +132,12 @@ Value EVM::o_Take (Cell* a, Cell* p) {
 Value EVM::o_Range (Cell* a, Cell* p) {
   int32_t from = 0, to = 0, step = a ? 1 : 0;
   auto n = numArgs(a);
-  if (n == 1) to = val(a, p).s32();
+  if (n == 1) to = a->value.s32();
   else if (n > 1) {
-    from = val(a, p).s32();
-    to = val(a->next, p).s32();
+    from = a->value.s32();
+    to = a->next->value.s32();
     if (n == 3)
-      step = val(a->next->next, p).s32();
+      step = a->next->next->value.s32();
   }
   if (n != 3 && to < 0)
     step = -1;
@@ -148,7 +148,7 @@ Value EVM::o_Range (Cell* a, Cell* p) {
 Value EVM::o_Cycle (Cell* a, Cell* p) {
   auto vals = vector<Value>();
   while (a) {
-    vals.push_back(val(a, p));
+    vals.push_back(a->value);
     a = a->next;
   }
   return Value(Data{.ptr=Lizt::cycle(vals)}, T_Lizt);
@@ -157,17 +157,17 @@ Value EVM::o_Cycle (Cell* a, Cell* p) {
 
 Value EVM::o_Emit (Cell* a, Cell* p) {
   if (!a) return Value();
-  veclen len = a->next ? val(a->next, p).s32() : -1;
-  return Value(Data{.ptr=Lizt::emit(val(a, p), len)}, T_Lizt);
+  veclen len = a->next ? a->next->value.s32() : -1;
+  return Value(Data{.ptr=Lizt::emit(a->value, len)}, T_Lizt);
 }
 
 
-//Ensure function is an op, lambda, (or function) TODO
+//Ensure function is an op, lambda, or function
 Cell* EVM::makeHead (Cell* a, Cell* p) {
   Type t = a->value.type();
   if (t == T_Lamb || t == T_Op || t == T_Func)
     return new Cell{a->value};
-  Value v = val(a, p);
+  Value v = a->value;
   if (v.type() != T_Lamb && v.type() != T_Op)
     return nullptr;
   return new Cell{v};
@@ -176,10 +176,10 @@ Cell* EVM::makeHead (Cell* a, Cell* p) {
 
 Value EVM::o_Map (Cell* a, Cell* p) {
   Cell* head = makeHead(a, p);
-  if (!head) return Value();
+  if (!head) return Value(); //f wasn't callable
   auto vectors = vector<Lizt*>();
   while ((a = a->next))
-    vectors.push_back(Lizt::list(val(a, p)));
+    vectors.push_back(Lizt::list(a->value));
   return Value(Data{.ptr=Lizt::map(head, vectors)}, T_Lizt);
 }
 
@@ -200,7 +200,7 @@ Value EVM::o_Where (Cell* a, Cell* p) {
     Cell valCell = Cell{testVal};
     head->next = &valCell;
     Cell form = Cell{Value(Data{.cell=head}, T_Cell)};
-    Value v = val(&form);
+    Value v = eval(&form);
     form.value.kill(); //Ensure head is not destroyed with form
     if (!v.tru()) continue;
     list = list.push_back(testVal);
@@ -215,7 +215,7 @@ Value EVM::o_Where (Cell* a, Cell* p) {
 Value EVM::o_Str (Cell* a, Cell* p) {
   auto str = new string();
   while (a) {
-    *str += toStr(val(a, p));
+    *str += toStr(a->value);
     a = a->next;
   }
   return Value(Data{.ptr = str}, T_Str);
@@ -232,13 +232,12 @@ Value EVM::o_Print (Cell* a, Cell* p, bool nl) {
 
 
 Value EVM::o_Val (Cell* a, Cell* p) {
-  return val(a, p);
+  return a->value;
 }
 
 
-Value EVM::exe (Op op, Cell* a, Cell* p) {
+Value EVM::exeOp (Op op, Cell* a, Cell* p) {
   switch (op) {
-    case O_If:    return o_If(a, p);
     case O_Add: case O_Sub: case O_Mul: case O_Div:
                   return o_Math(a, p, op);
     case O_Vec:   return o_Vec(a, p);
@@ -257,22 +256,42 @@ Value EVM::exe (Op op, Cell* a, Cell* p) {
   return Value();
 }
 
-Value EVM::val (Cell* a, Cell* p) {
+Value EVM::eval (Cell* a, Cell* p) {
   Type t = a->value.type();
-  if (t == T_Cell || t == T_Lamb) {
-    //Have lambdas use cell's next as parameter list
-    if (t == T_Lamb)
-      p = a->next;
-    //Evaluate for a function or operation
-    Cell* head = a->value.cell();
-    Value v = val(head, p);
-    if (v.type() == T_Func)
-      return exe(v.func(), head->next);
-    Op op = v.op();
-    //Either execute an op as part of a form,
-    //  or return the value if it wasn't an op.
-    //    This can happen with REPL non-form evaluations.
-    return op ? exe(op, head->next, p) : v;
+  //if (t == T_Cell || t == T_Lamb) {
+  //  //Have lambdas use neighbour as parameter list
+  //  if (t == T_Lamb)
+  //    p = a->next;
+  if (t == T_Cell) {
+    //Evaluate all form arguments
+    a = a->value.cell();
+    Cell *head, *arg;
+    Value headVal = eval(a, p);
+    head = arg = new Cell{headVal};
+    //Handle short-circuited forms
+    if (head->value.op() == O_If)
+      return eval(cellAt(a, eval(a->next, p).tru() ? 2 : 3), p);
+    //Continue collecting arguments
+    while ((a = a->next)) {
+      arg = arg->next ? arg->next : arg;
+      arg->next = new Cell{eval(a, p)};
+    }
+    //... then call the operation/lambda/function
+    auto ret = Value();
+    if (head->value.type() == T_Op)
+      ret = head->value.op()
+        ? exeOp(head->value.op(), head->next, p)
+        : head->value; //This can happen with REPL non-form evals
+    else
+    if (head->value.type() == T_Lamb) {
+      Cell lHead = Cell{Value{head->value.data(), T_Cell}};
+      ret = eval(&lHead, head->next);
+      lHead.value.kill();
+    } else
+    if (head->value.type() == T_Func)
+      ret = exeFunc(head->value.func(), head->next);
+    delete head;
+    return ret;
   }
   //Return parameter or nil
   if (t == T_Para)
@@ -332,19 +351,16 @@ Value EVM::liztAt (Lizt* l, veclen at) {
       return *(Value*)l->config;
     case LiztT::P_Map: {
       auto m = (Lizt::Map*)l->config;
-      Cell* args = nullptr;
-      {
-        Cell* arg = nullptr;
-        //Take one item from each source vector and turn it into an argument
-        for (argnum v = 0, vLen = m->sources.size(); v < vLen; ++v) {
-          (arg ? arg->next : arg) = new Cell{liztAt(m->sources[v], at)};
-          if (!args) args = arg;
-        }
+      Cell *args, *arg;
+      args = arg = new Cell{liztAt(m->sources[0], at)};
+      for (argnum v = 1, vLen = m->sources.size(); v < vLen; ++v) {
+        arg = arg->next ? arg->next : arg;
+        arg->next = new Cell{liztAt(m->sources[v], at)};
       }
       m->head->next = args;
       //Create a temporary form Cell
       Cell form = Cell{Value(Data{.cell=m->head}, T_Cell)};
-      Value v = val(&form);
+      Value v = eval(&form);
       form.value.kill(); //Ensure head is not destroyed with form
       m->head->next = nullptr;
       delete args;

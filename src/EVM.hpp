@@ -9,16 +9,16 @@ class EVM {
 public:
   void addFunc (fid, vector<Cell*>);
   void removeFunc (fid);
-  Value exe (fid, Cell* = nullptr);
+  Value exeFunc (fid, Cell* = nullptr);
   string toStr (Value);
 
 private:
   map<fid, vector<Cell*>> funcs = map<fid, vector<Cell*>>();
-  Value exe (Op, Cell*, Cell*);
-  Value val (Cell*, Cell* = nullptr);
+  Value exeOp (Op, Cell*, Cell*);
+  Value eval (Cell*, Cell* = nullptr);
   Value valAt (Cell*, Cell*, argnum);
+  Cell* cellAt (Cell*, argnum);
   Cell* makeHead (Cell*, Cell*);
-  Value o_If    (Cell*, Cell*);
   Value o_Math  (Cell*, Cell*, Op);
   Value o_Vec   (Cell*, Cell*);
   Value o_Skip  (Cell*, Cell*);
