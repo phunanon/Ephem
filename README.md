@@ -64,7 +64,7 @@ N
 `cd Ephem && git clone --depth=1 https://github.com/arximboldi/immer.git`  
 `mv immer/immer src && rm -r immer`  
 Ensure CMake in installed on your system.  
-Run `./build.sh`. If needing to subsequently recompile use `./make.sh`.  
+Run `./init.sh`. If needing to subsequently recompile use `./make.sh`.  
 Execute the `build/ephem` binary.
 
 ## Syntax and native operations

@@ -1,6 +1,7 @@
 #include "EVM.hpp"
 #include <cstdint>
 #include <cstring>
+#include <cmath>
 
 EVM::~EVM () {
   for (auto f : funcs)
@@ -78,6 +79,7 @@ Value EVM::o_Math (Cell* a, Op op) {
         case O_Sub: fResult -= fNext; break;
         case O_Mul: fResult *= fNext; break;
         case O_Div: fResult /= fNext; break;
+        case O_Mod: fResult = fmod(fResult, fNext); break;
       }
     } else {
       if (v.type() == T_D32) iNext = *(float*)(&iNext);
@@ -86,6 +88,7 @@ Value EVM::o_Math (Cell* a, Op op) {
         case O_Sub: iResult -= iNext; break;
         case O_Mul: iResult *= iNext; break;
         case O_Div: iResult /= iNext; break;
+        case O_Mod: iResult %= iNext; break;
       }
     }
     a = a->next;
@@ -244,6 +247,7 @@ Value EVM::o_Val (Cell* a) {
 Value EVM::exeOp (Op op, Cell* a) {
   switch (op) {
     case O_Add: case O_Sub: case O_Mul: case O_Div:
+    case O_Mod:
                   return o_Math(a, op);
     case O_Vec:   return o_Vec(a);
     case O_Skip:  return o_Skip(a);
