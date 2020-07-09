@@ -17,13 +17,15 @@ enum Type : uint8_t {
 
 enum Op : uint8_t {
   O_None, O_If, O_Add, O_Sub, O_Mul, O_Div, O_Mod,
+  O_Alike, O_NAlike, O_Equal, O_NEqual,
   O_Vec, O_Skip, O_Take, O_Range, O_Cycle, O_Emit,
   O_Map, O_Where,
-  O_Str, O_Print, O_Priln, O_Val, O_Do
+  O_Str, O_Print, O_Prinln, O_Val, O_Do
 };
 
 const char* const ops[] = {
   "none", "if", "+", "-", "*", "/", "mod",
+  "=", "!=", "==", "!==",
   "vec", "skip", "take", "range", "cycle", "emit",
   "map", "where",
   "str", "print", "println", "val", "do", 0

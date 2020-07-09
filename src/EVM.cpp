@@ -99,6 +99,63 @@ Value EVM::o_Math (Cell* a, Op op) {
 }
 
 
+bool areEqual (Value v0, Value v1) {
+  return v0.u32() == v1.u32();
+}
+
+bool EVM::areAlike (Value v0, Value v1) {
+  Type type0 = v0.type();
+  Type type1 = v1.type();
+  //Ensure mutual comparison for floats
+  if ((type0 == T_D32 || type1 == T_D32) && (type0 != type1))
+    return false;
+  //Compare strings
+  if (type0 == T_Str || type1 == T_Str) {
+    if (type0 != type1) return false; //Mutual comparison only
+    return !v0.str().compare(v1.str());
+  } else
+  //Compare vectors and Lizts
+  if ((type0 == T_Vec || type0 == T_Lizt)
+    && (type1 == T_Vec || type1 == T_Lizt)) {
+    Lizt* lizt0 = Lizt::list(v0);
+    Lizt* lizt1 = Lizt::list(v1);
+    bool ret = lizt0->len == lizt1->len;
+    if (ret)
+      for (veclen i = 0, lLen = lizt0->len; i < lLen; ++i)
+        if (!areAlike(liztAt(lizt0, i), liztAt(lizt1, i))) {
+          ret = false;
+          break;
+        }
+    delete lizt0;
+    delete lizt1;
+    return ret;
+  }
+  //Decay into Data equality
+  return areEqual(v0, v1);
+}
+
+Value EVM::o_Equal (Cell* a, Op op) {
+  if (!a) return Value();
+  Value compare = a->value;
+  //Loop will break early on false comparison
+  while ((a = a->next)) {
+    Value to = a->value;
+    if (op == O_Alike || op == O_NAlike)
+      if (areAlike(compare, to) ^ (op == O_Alike))
+        break;
+    if (op == O_Equal || op == O_NEqual)
+      if (areEqual(compare, to) ^ (op == O_Equal))
+        break;
+    //if (op == O_GThan)
+    //  if (!greaterThan(compare, to))
+    //    break;
+    //For O_GThan, O_LThan, O_GETo, O_LETo, TODO
+    compare = to;
+  }
+  return Value(Data{.tru=!a}, T_Boo);
+}
+
+
 Value EVM::o_Vec (Cell* a) {
   auto vect = immer::vector<Value>();
   while (a) {
@@ -217,7 +274,6 @@ Value EVM::o_Where (Cell* a) {
   auto iVec = new immer::vector<Value>(list.persistent());
   return Value(Data{.ptr=iVec}, T_Vec);
 }
-}
 
 
 Value EVM::o_Str (Cell* a) {
@@ -239,28 +295,29 @@ Value EVM::o_Print (Cell* a, bool nl) {
 }
 
 
-Value EVM::o_Val (Cell* a) {
-  return a->value;
-}
-
-
 Value EVM::exeOp (Op op, Cell* a) {
   switch (op) {
     case O_Add: case O_Sub: case O_Mul: case O_Div:
     case O_Mod:
-                  return o_Math(a, op);
-    case O_Vec:   return o_Vec(a);
-    case O_Skip:  return o_Skip(a);
-    case O_Take:  return o_Take(a);
-    case O_Range: return o_Range(a);
-    case O_Cycle: return o_Cycle(a);
-    case O_Emit:  return o_Emit(a);
-    case O_Map:   return o_Map(a);
-    case O_Where: return o_Where(a);
-    case O_Str:   return o_Str(a);
-    case O_Print: case O_Priln:
-                  return o_Print(a, op == O_Priln);
-    case O_Val:   return o_Val(a);
+                   return o_Math(a, op);
+    case O_Alike: case O_NAlike: case O_Equal: case O_NEqual:
+                   return o_Equal(a, op);
+    case O_Vec:    return o_Vec(a);
+    case O_Skip:   return o_Skip(a);
+    case O_Take:   return o_Take(a);
+    case O_Range:  return o_Range(a);
+    case O_Cycle:  return o_Cycle(a);
+    case O_Emit:   return o_Emit(a);
+    case O_Map:    return o_Map(a);
+    case O_Where:  return o_Where(a);
+    case O_Str:    return o_Str(a);
+    case O_Print: case O_Prinln:
+                   return o_Print(a, op == O_Prinln);
+    case O_Val:    return a->value;
+    case O_Do: 
+      do {
+        if (!a->next) return a->value;
+      } while ((a = a->next));
   }
   return Value();
 }

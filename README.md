@@ -31,7 +31,6 @@ N
 - Has REPL
 - Hotloadable (NYA)
 - Lazy
-- FaaS ready (NYA)
 - Easy for total beginners (NYA)
 - Immutable values & collections (NYA)
 
@@ -53,6 +52,7 @@ N
 - Network access (NYA)
 
 **Anti-features:**  
+- No JIT; it's slow
 - Compiled for 32bit
 - Single-threaded
 - No native operation overrides
@@ -80,8 +80,60 @@ Execute the `build/ephem` binary.
 `+ - * / mod`  
 e.g. `(+ 1 2 3)`
 
-`(= )`
-  O_Equit, O_Nequi, O_Equal, O_Nqual, O_GThan, O_LThan, O_GETo, O_LETo,
+**Likeness vs. Equality**  
+Equality compares the 4 bytes of information inside a Value, which may be a primitive type or pointer to a more complex type.  
+Likeness intelligently compares strings and lists per character and item respectively. Likeness otherwise decays into equality.
+
+`(= [1..])`  
+Returns `T` for homogeneously alike arguments.  
+Compares list items for sequential likeness.  
+```clj
+(= 3.14 3.14 3.14)    => T
+(= T F 1)             => F
+(= [0 1 2] (range 3)) => T
+(= 123 [3 4 5])       => F
+```
+
+`(!= [1..])`  
+Returns `F` for contiguous alike arguments.  
+```clj
+(!= T T)              => F
+(!= T F)              => T
+(!= T F T)            => T
+(!= T F T T)          => F
+```
+
+`(== [1..])`  
+Returns `T` for homogeneously equal arguments.  
+```clj
+(== 3.14 3.14 3.14)   => T
+(== T F 1)            => F
+(== [1 2 3] [1 2 3])  => F   //As it compares internal pointers
+(== 12345678 [1 2 3]) => T~F //… therefore very unlikely, but possible to be T
+```
+
+`(!== [1..])`  
+Returns `F` for contiguous equal arguments.  
+Refer to `!=` for similar characteristics.
+
+**Monotonic comparison**  
+The monotonic comparisons compare each argument in turn with the previous.  
+Strings are intelligently compared for ASCII order.
+
+`(< [1..])`  
+Returns `T` for monotonically increasing arguments.  
+TODO e.g.
+
+`(> [1..])`  
+Returns `T` for monotonically decreasing arguments.
+
+`(<= [1..])`  
+Returns `T` for monotonically non-decreasing arguments.
+
+`(>= [1..])`  
+Returns `T` for monotonically non-increasing arguments.
+
+  
   O_Vec, O_Skip, O_Take, O_Range, O_Cycle, O_Emit,
   O_Map, O_Where,
   O_Str, O_Print, O_Priln, O_Val, O_Do
