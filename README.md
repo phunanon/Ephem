@@ -82,7 +82,8 @@ e.g. `(+ 1 2 3)`
 
 **Likeness vs. Equality**  
 Equality compares the 4 bytes of information inside a Value, which may be a primitive type or pointer to a more complex type.  
-Likeness intelligently compares strings and lists per character and item respectively. Likeness otherwise decays into equality.
+Likeness intelligently compares strings and lists per character and item respectively. Likeness otherwise decays into equality.  
+Infinite lists are only equal to `N`.
 
 `(= [1..])`  
 Returns `T` for homogeneously alike arguments.  

@@ -218,7 +218,7 @@ Cell* cellise (deque<Token> &tokens, vector<string> paras) {
             //True/False
             if (ch == 'T' || ch == 'F') {
               data.tru = ch == 'T';
-              type = T_Boo;
+              type = T_Bool;
               break;
             }
             //Nil

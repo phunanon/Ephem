@@ -128,12 +128,18 @@ bool EVM::areAlike (Value v0, Value v1) {
     if (type0 != type1) return false; //Mutual comparison only
     return !v0.str().compare(v1.str());
   } else
+  //Match infinite Lizt and Nil
+  if ((type0 == T_N && type1 == T_Lizt)
+   || (type0 == T_Lizt && type1 == T_N))
+    return (type0 == T_Lizt ? v0.lizt() : v1.lizt())->isInf();
+  else
   //Compare vectors and Lizts
   if ((type0 == T_Vec || type0 == T_Lizt)
-    && (type1 == T_Vec || type1 == T_Lizt)) {
+   && (type1 == T_Vec || type1 == T_Lizt)) {
     Lizt* lizt0 = Lizt::list(v0);
     Lizt* lizt1 = Lizt::list(v1);
-    bool ret = lizt0->len == lizt1->len;
+    bool ret = (lizt0->len == lizt1->len)
+            && !(lizt0->isInf() && lizt1->isInf());
     if (ret)
       for (veclen i = 0, lLen = lizt0->len; i < lLen; ++i)
         if (!areAlike(liztAt(lizt0, i), liztAt(lizt1, i))) {
@@ -166,7 +172,7 @@ Value EVM::o_Equal (Cell* a, Op op) {
     //For O_GThan, O_LThan, O_GETo, O_LETo, TODO
     compare = to;
   }
-  return Value(Data{.tru=!a}, T_Boo);
+  return Value(Data{.tru=!a}, T_Bool);
 }
 
 
@@ -314,8 +320,10 @@ Value EVM::exeOp (Op op, Cell* a) {
     case O_Str:    return o_Str(a);
     case O_Print: case O_Prinln:
                    return o_Print(a, op == O_Prinln);
+
+    case O_Not:    return Value{Data{.tru=!a->value.tru()}, T_Bool};
     case O_Val:    return a->value;
-    case O_Do: 
+    case O_Do:
       do {
         if (!a->next) return a->value;
       } while ((a = a->next));
@@ -367,14 +375,14 @@ Value EVM::eval (Cell* a, Cell* p) {
 
 string EVM::toStr (Value v) {
   switch (v.type()) {
-    case T_N:   return string("N");
-    case T_U08: return to_string(v.u08());
-    case T_S08: return string(1, v.s08());
-    case T_U32: return to_string(v.u32());
-    case T_S32: return to_string(v.s32());
-    case T_D32: return to_string(v.d32());
-    case T_Boo: return v.tru() ? "T" : "F";
-    case T_Str: return v.str();
+    case T_N:    return string("N");
+    case T_U08:  return to_string(v.u08());
+    case T_S08:  return string(1, v.s08());
+    case T_U32:  return to_string(v.u32());
+    case T_S32:  return to_string(v.s32());
+    case T_D32:  return to_string(v.d32());
+    case T_Bool: return v.tru() ? "T" : "F";
+    case T_Str:  return v.str();
     case T_Vec: {
       auto vect = *vec(v);
       auto vLen = vect.size();

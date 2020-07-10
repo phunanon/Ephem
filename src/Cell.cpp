@@ -63,8 +63,8 @@ uint8_t Value::size () {
 }
 
 bool Value::tru () {
-  if (_type == T_N)   return false;
-  if (_type == T_Boo) return _data.tru;
+  if (_type == T_N)    return false;
+  if (_type == T_Bool) return _data.tru;
   return true;
 }
 Op Value::op () {
