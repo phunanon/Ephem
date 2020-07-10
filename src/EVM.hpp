@@ -19,7 +19,6 @@ private:
   Value eval (Cell*, Cell* = nullptr);
   Value valAt (Cell*, argnum);
   Cell* cellAt (Cell*, argnum);
-  Cell* makeHead (Cell*);
   bool  areAlike (Value, Value);
   Value o_Math   (Cell*, Op);
   Value o_Equal  (Cell*, Op);

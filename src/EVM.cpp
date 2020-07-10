@@ -3,6 +3,27 @@
 #include <cstring>
 #include <cmath>
 
+argnum numArgs (Cell* a) {
+  if (!a) return 0;
+  argnum num = 1;
+  while ((a = a->next)) ++num;
+  return num;
+}
+
+bool isCallType (Cell* a) {
+  Type t = a->value.type();
+  return t == T_Lamb || t == T_Op || t == T_Func;
+}
+
+template <class T>
+T hcpy (T* ptr) {
+  T cpy = *ptr;
+  delete ptr;
+  return cpy;
+}
+
+
+
 EVM::~EVM () {
   for (auto f : funcs)
     removeFunc(f.first);
@@ -44,13 +65,6 @@ Cell* EVM::cellAt (Cell* a, argnum by) {
       a = a->next;
   else return a;
   return by ? nullptr : a;
-}
-
-argnum numArgs (Cell* a) {
-  if (!a) return 0;
-  argnum num = 1;
-  while ((a = a->next)) ++num;
-  return num;
 }
 
 
@@ -157,13 +171,12 @@ Value EVM::o_Equal (Cell* a, Op op) {
 
 
 Value EVM::o_Vec (Cell* a) {
-  auto vect = immer::vector<Value>();
+  auto vect = immer::vector_transient<Value>();
   while (a) {
-    vect = vect.push_back(a->value);
+    vect.push_back(a->value);
     a = a->next;
   }
-  auto vectPtr = new immer::vector<Value>(vect);
-  return Value(Data{.ptr=vectPtr}, T_Vec);
+  return Value(Data{.ptr=new immer::vector<Value>(vect.persistent())}, T_Vec);
 }
 
 
@@ -227,21 +240,9 @@ Value EVM::o_Emit (Cell* a) {
 }
 
 
-//Ensure function is an op, lambda, or function
-Cell* EVM::makeHead (Cell* a) {
-  Type t = a->value.type();
-  if (t == T_Lamb || t == T_Op || t == T_Func)
-    return new Cell{a->value};
-  Value v = a->value;
-  if (v.type() != T_Lamb && v.type() != T_Op)
-    return nullptr;
-  return new Cell{v};
-}
-
-
 Value EVM::o_Map (Cell* a) {
-  Cell* head = makeHead(a);
-  if (!head) return Value(); //f wasn't callable
+  if (!isCallType(a)) return Value();
+  Cell* head = new Cell{a->value};
   auto vectors = vector<Lizt*>();
   while ((a = a->next))
     vectors.push_back(Lizt::list(a->value));
@@ -252,25 +253,25 @@ Value EVM::o_Map (Cell* a) {
 //Returns a filtered T_Vec from a T_Lizt
 // e.g. (where f lizt) (where f take lizt) (where f take skip lizt)
 Value EVM::o_Where (Cell* a) {
-  Cell* head = makeHead(a);
-  if (!head) return Value();
+  if (!isCallType(a)) return Value();
   auto n = numArgs(a);
-  Lizt* lizt = Lizt::list(valAt(a, n - 1));
-  if (lizt->isInf()) return Value();
+  Lizt lizt = hcpy(Lizt::list(valAt(a, n - 1)));
+  if (lizt.isInf()) return Value();
   veclen skipN = n == 4 ? valAt(a, 2).s32() : 0;
-  uint   takeN = n >= 3 ? valAt(a, 1).s32() : lizt->len;
-  auto list = immer::vector<Value>().transient();
-  Cell form = Cell{Value(Data{.cell=head}, T_Cell)};
-  for (veclen i = skipN; i < lizt->len && list.size() < takeN; ++i) {
-    Value testVal = liztAt(lizt, i);
+  uint   takeN = n >= 3 ? valAt(a, 1).s32() : lizt.len;
+  auto list = immer::vector_transient<Value>();
+  Cell head = Cell{a->value};
+  Cell form = Cell{Value(Data{.cell=&head}, T_Cell)};
+  for (veclen i = skipN; i < lizt.len && list.size() < takeN; ++i) {
+    Value testVal = liztAt(&lizt, i);
     Cell valCell = Cell{testVal};
-    head->next = &valCell;
+    head.next = &valCell;
     Value v = eval(&form);
     if (!v.tru()) continue;
     list.push_back(testVal);
   }
-  head->next = nullptr;
-  delete lizt;
+  head.next = nullptr;
+  form.value.kill(); //To ensure head isn't deleted
   auto iVec = new immer::vector<Value>(list.persistent());
   return Value(Data{.ptr=iVec}, T_Vec);
 }
@@ -331,36 +332,29 @@ Value EVM::eval (Cell* a, Cell* p) {
   if (t == T_Cell) {
     //Evaluate all form arguments
     a = a->value.cell();
-    Cell *head, *arg;
-    Value headVal = eval(a, p);
-    head = arg = new Cell{headVal};
+    Cell head = Cell{eval(a, p)}, *arg = &head;
     //Handle short-circuited forms
-    if (head->value.op() == O_If) {
-      auto ret = eval(cellAt(a, eval(a->next, p).tru() ? 2 : 3), p);
-      delete head;
-      return ret;
-    }
+    if (head.value.op() == O_If)
+      return eval(cellAt(a, eval(a->next, p).tru() ? 2 : 3), p);
     //Continue collecting arguments
     while ((a = a->next)) {
       arg = arg->next ? arg->next : arg;
       arg->next = new Cell{eval(a, p)};
     }
     //... then call the operation/lambda/function
-    auto ret = Value();
-    if (head->value.type() == T_Op)
-      ret = head->value.op()
-        ? exeOp(head->value.op(), head->next)
-        : head->value; //This can happen with REPL non-form evals
+    if (head.value.type() == T_Op)
+      return head.value.op()
+        ? exeOp(head.value.op(), head.next)
+        : head.value; //This can happen with REPL non-form evals(?)
     else
-    if (head->value.type() == T_Lamb) {
-      Cell lHead = Cell{Value{head->value.data(), T_Cell}};
-      ret = eval(&lHead, head->next);
+    if (head.value.type() == T_Lamb) {
+      Cell lHead = Cell{Value{head.value.data(), T_Cell}};
+      auto ret = eval(&lHead, head.next);
       lHead.value.kill();
+      return ret;
     } else
-    if (head->value.type() == T_Func)
-      ret = exeFunc(head->value.func(), head->next);
-    delete head;
-    return ret;
+    if (head.value.type() == T_Func)
+      return exeFunc(head.value.func(), head.next);
   }
   //Return parameter or nil
   if (t == T_Para)
@@ -420,19 +414,17 @@ Value EVM::liztAt (Lizt* l, veclen at) {
       return *(Value*)l->config;
     case LiztT::P_Map: {
       auto m = (Lizt::Map*)l->config;
-      Cell *args, *arg;
-      args = arg = new Cell{liztAt(m->sources[0], at)};
+      Cell args = Cell{liztAt(m->sources[0], at)}, *arg = &args;
       for (argnum v = 1, vLen = m->sources.size(); v < vLen; ++v) {
         arg = arg->next ? arg->next : arg;
         arg->next = new Cell{liztAt(m->sources[v], at)};
       }
-      m->head->next = args;
+      m->head->next = &args;
       //Create a temporary form Cell
       Cell form = Cell{Value(Data{.cell=m->head}, T_Cell)};
       Value v = eval(&form);
       form.value.kill(); //Ensure head is not destroyed with form
       m->head->next = nullptr;
-      delete args;
       return v;
     }
   }
@@ -442,7 +434,7 @@ Value EVM::liztAt (Lizt* l, veclen at) {
 //Returns remaining Lizt items as T_Vec
 Value EVM::liztFrom (Lizt* l, veclen from) {
   if (l->isInf()) return Value();
-  auto list = immer::vector<Value>().transient();
+  auto list = immer::vector_transient<Value>();
   for (auto i = from; i < l->len; ++i)
     list.push_back(liztAt(l, i));
   return Value(Data{.ptr=new immer::vector<Value>(list.persistent())}, T_Vec);
