@@ -28,6 +28,7 @@ union Data {
 };
 
 class Value {
+  void setRef ();
   refnum _ref = 0;
   Data _data = Data{};
   Type _type = T_N;

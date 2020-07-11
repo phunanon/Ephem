@@ -1,20 +1,29 @@
 #pragma once
 #include <memory>
 #include <string>
-#include <map>
 #include "Cell.hpp"
 using namespace std;
 
+class FuncList {
+  vector<fid> ids = vector<fid>();
+  vector<vector<Cell*>> funcs = vector<vector<Cell*>>();
+public:
+  ~FuncList ();
+  int funcAt (fid);
+  vector<Cell*>* get (fid);
+  void remove (fid);
+  void add (fid, vector<Cell*>);
+};
+
 class EVM {
 public:
-  ~EVM ();
   void addFunc (fid, vector<Cell*>);
   void removeFunc (fid);
   Value exeFunc (fid, Cell* = nullptr);
   string toStr (Value);
 
 private:
-  map<fid, vector<Cell*>> funcs = map<fid, vector<Cell*>>();
+  FuncList funcs = FuncList();
   Value exeOp (Op, Cell*);
   Value eval (Cell*, Cell* = nullptr);
   Value valAt (Cell*, argnum);

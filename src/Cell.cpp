@@ -2,7 +2,7 @@
 #include <limits>
 
 static uint8_t refs[NUM_OBJ] = {0};
-refnum leftmostRef = 0;
+refnum leftmostRef = 1;
 
 static refnum newRef () {
   refnum ref = leftmostRef++;
@@ -11,27 +11,31 @@ static refnum newRef () {
   return ref;
 }
 
-Value::Value () {
-  refs[_ref = newRef()] = 1;
+Value::Value () {}
+
+void Value::setRef () {
+  if (_type == T_Cell || _type == T_Lamb || _type == T_Str || _type == T_Vec || _type == T_Lizt)
+    refs[_ref = newRef()] = 1;
 }
 
 Value::Value (Data d, Type t) : _data(d), _type(t) {
-  refs[_ref = newRef()] = 1;
+  setRef();
 }
 Value::Value (const Value& obj)
   : _ref(obj._ref), _data(obj._data), _type(obj._type) {
-  ++refs[_ref];
+  if (_ref) ++refs[_ref];
 }
 Value& Value::operator= (const Value& obj) {
   this->~Value();
   _data = obj._data;
   _type = obj._type;
-  ++refs[_ref = obj._ref];
+  _ref = obj._ref;
+  if (_ref) ++refs[_ref];
   return *this;
 }
 
 Value::~Value () {
-  if (!refs[_ref] || --refs[_ref]) return;
+  if (!_ref || !refs[_ref] || --refs[_ref]) return;
 //if (type == T_Cell || type == T_Str || type == T_Lamb || type == T_Vec)
 //  printf("haha %d\n", type);
   switch (_type) {

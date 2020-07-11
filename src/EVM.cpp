@@ -24,30 +24,51 @@ T hcpy (T* ptr) {
 
 
 
-EVM::~EVM () {
-  for (auto f : funcs)
-    removeFunc(f.first);
+FuncList::~FuncList () {
+  for (auto id : ids)
+    remove(id);
+}
+
+int FuncList::funcAt (fid id) {
+  auto idx = find(ids.begin(), ids.end(), id);
+  return idx != ids.end() ? idx - ids.begin() : -1;
+}
+
+vector<Cell*>* FuncList::get (fid id) {
+  auto idx = funcAt(id);
+  return idx != -1 ? &funcs[idx] : nullptr;
+}
+
+void FuncList::remove (fid id) {
+  auto idx = funcAt(id);
+  if (idx == -1) return;
+  for (auto cell : funcs[idx])
+    delete cell;
+  ids.erase(ids.begin() + idx);
+  funcs.erase(funcs.begin() + idx);
+}
+
+void FuncList::add (fid id, vector<Cell*> cells) {
+  ids.push_back(id);
+  funcs.push_back(cells);
 }
 
 void EVM::addFunc (fid id, vector<Cell*> cells) {
   removeFunc(id);
-  funcs[id] = cells;
+  funcs.add(id, cells);
 }
 
 void EVM::removeFunc (fid id) {
-  if (funcs.find(id) != funcs.end())
-    for (auto cell : funcs[id])
-      delete cell;
-  funcs.erase(id);
+  funcs.remove(id);
 }
 
 
 Value EVM::exeFunc (fid id, Cell* params) {
-  if (funcs.find(id) == funcs.end())
-    return Value();
+  auto func = funcs.get(id);
+  if (!func) return Value();
   Value ret;
-  for (auto cell : funcs[id])
-    ret = eval(cell, params);
+  for (uint i = 0, iLen = func->size(); i < iLen; ++i)
+    ret = eval(func->at(i), params);
   return ret;
 }
 

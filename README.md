@@ -53,9 +53,11 @@ N
 
 **Anti-features:**  
 - No JIT; it's slow
-- Compiled for 32bit
 - Single-threaded
 - No native operation overrides
+
+**Characteristics**
+- x86 is ~2x slower but x64 uses ~1.75x more memory
 
 ## Usage
 
