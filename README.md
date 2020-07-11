@@ -123,7 +123,12 @@ Strings are intelligently compared for ASCII order.
 
 `(< [1..])`  
 Returns `T` for monotonically increasing arguments.  
-TODO e.g.
+```clj
+(< 1 2)               => T
+(< 10 -10)            => F
+(< -1 10 56)          => T
+(< -10 10 9)          => F
+```
 
 `(> [1..])`  
 Returns `T` for monotonically decreasing arguments.

@@ -63,9 +63,8 @@ uint8_t Value::size () {
 }
 
 bool Value::tru () {
-  if (_type == T_N)    return false;
   if (_type == T_Bool) return _data.tru;
-  return true;
+  return _type != T_N;
 }
 Op Value::op () {
   return _type == T_Op ? _data.op : O_None;
@@ -82,6 +81,7 @@ fid      Value::func() { return _data.fID; }
 string   Value::str () { return *(string*)_data.ptr; }
 Lizt*    Value::lizt() { return (Lizt*)_data.ptr; }
 Cell*    Value::cell() { return (Cell*)_data.ptr; }
+float    Value::d32c() { return _type == T_D32 ? d32() : (float)s32(); }
 
 
 immer::vector<Value>* vec (Value &v) {
@@ -198,7 +198,15 @@ Lizt* Lizt::map (Cell* head, vector<Lizt*> sources) {
   return new Lizt(P_Map, smallest, new Map{sources, head});
 }
 
-/// Methods
+/// Methods and non-factory statics
+
+veclen Lizt::length (Value &v) {
+  if (v.type() == T_Vec)
+    return vec(v)->size();
+  if (v.type() == T_Lizt)
+    return v.lizt()->len;
+  return 0;
+}
 
 bool Lizt::isInf () {
   return len == -1;

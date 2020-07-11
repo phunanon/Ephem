@@ -124,54 +124,78 @@ bool EVM::areAlike (Value v0, Value v1) {
   if ((type0 == T_D32 || type1 == T_D32) && (type0 != type1))
     return false;
   //Compare strings
-  if (type0 == T_Str || type1 == T_Str) {
-    if (type0 != type1) return false; //Mutual comparison only
+  if (type0 == T_Str) //Guaranteed mutual types
     return !v0.str().compare(v1.str());
-  } else
+  else
   //Match infinite Lizt and Nil
   if ((type0 == T_N && type1 == T_Lizt)
    || (type0 == T_Lizt && type1 == T_N))
     return (type0 == T_Lizt ? v0.lizt() : v1.lizt())->isInf();
   else
-  //Compare vectors and Lizts
+  //Compare lists by item
   if ((type0 == T_Vec || type0 == T_Lizt)
    && (type1 == T_Vec || type1 == T_Lizt)) {
-    Lizt* lizt0 = Lizt::list(v0);
-    Lizt* lizt1 = Lizt::list(v1);
-    bool ret = (lizt0->len == lizt1->len)
-            && !(lizt0->isInf() && lizt1->isInf());
-    if (ret)
-      for (veclen i = 0, lLen = lizt0->len; i < lLen; ++i)
-        if (!areAlike(liztAt(lizt0, i), liztAt(lizt1, i))) {
-          ret = false;
-          break;
-        }
-    delete lizt0;
-    delete lizt1;
-    return ret;
+    Lizt lizt0 = hcpy(Lizt::list(v0));
+    Lizt lizt1 = hcpy(Lizt::list(v1));
+    if ((lizt0.len != lizt1.len)
+     || (lizt0.isInf() && lizt1.isInf()))
+      return false;
+    for (veclen i = 0, lLen = lizt0.len; i < lLen; ++i)
+      if (!areAlike(liztAt(&lizt0, i), liztAt(&lizt1, i)))
+        return false;
+    return true;
   }
   //Decay into Data equality
   return areEqual(v0, v1);
 }
 
+bool numDiff (Value v0, Value v1, bool greater) {
+  Type type0 = v0.type();
+  Type type1 = v1.type();
+  //Compare strings
+  if (type0 == T_Str) //Guaranteed mutual types
+    return v0.str().compare(v1.str()) == (greater ? 1 : -1);
+  //Compare lists by length
+  if ((type0 == T_Vec || type0 == T_Lizt)
+   && (type1 == T_Vec || type1 == T_Lizt))
+    return greater
+      ? (Lizt::length(v0) < Lizt::length(v1))
+      : (Lizt::length(v0) > Lizt::length(v1));
+  //Compare as ints/floats
+  return greater
+    ? (v0.d32c() < v1.d32c())
+    : (v0.d32c() > v1.d32c());
+}
+
 Value EVM::o_Equal (Cell* a, Op op) {
   if (!a) return Value();
-  Value compare = a->value;
+  Value v0 = a->value;
   //Loop will break early on false comparison
   while ((a = a->next)) {
-    Value to = a->value;
-    if (op == O_Alike || op == O_NAlike)
-      if (areAlike(compare, to) ^ (op == O_Alike))
+    Value v1 = a->value;
+    if ((v0.type() == T_Str || v1.type() == T_Str) && v0.type() != v1.type())
+      break; //Mutual string comparison only
+    switch (op) {
+      case O_Alike: case O_NAlike:
+        if (areAlike(v0, v1) ^ (op == O_Alike))
+          goto stopComparing;
         break;
-    if (op == O_Equal || op == O_NEqual)
-      if (areEqual(compare, to) ^ (op == O_Equal))
+      case O_Equal: case O_NEqual:
+        if (areEqual(v0, v1) ^ (op == O_Equal))
+          goto stopComparing;
         break;
-    //if (op == O_GThan)
-    //  if (!greaterThan(compare, to))
-    //    break;
-    //For O_GThan, O_LThan, O_GETo, O_LETo, TODO
-    compare = to;
+      case O_GThan: case O_LETo:
+        if (numDiff(v0, v1, true) ^ (op == O_GThan))
+          goto stopComparing;
+        break;
+      case O_LThan: case O_GETo:
+        if (numDiff(v0, v1, false) ^ (op == O_LThan))
+          goto stopComparing;
+        break;
+    }
+    v0 = v1;
   }
+  stopComparing: ;
   return Value(Data{.tru=!a}, T_Bool);
 }
 
@@ -308,6 +332,7 @@ Value EVM::exeOp (Op op, Cell* a) {
     case O_Mod:
                    return o_Math(a, op);
     case O_Alike: case O_NAlike: case O_Equal: case O_NEqual:
+    case O_GThan: case O_LThan: case O_GETo: case O_LETo:
                    return o_Equal(a, op);
     case O_Vec:    return o_Vec(a);
     case O_Skip:   return o_Skip(a);

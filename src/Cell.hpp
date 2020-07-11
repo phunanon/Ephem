@@ -43,7 +43,7 @@ public:
   Data     data ();
   Type     type ();
   uint8_t  size ();
-  bool     tru  ();
+  bool     tru  (); //Coerce to bool
   Op       op   ();
   void*    ptr  ();
   uint8_t  u08  ();
@@ -57,6 +57,7 @@ public:
   string   str  ();
   Cell*    cell ();
   Lizt*    lizt ();
+  float    d32c (); //Coerce to d32
 };
 
 immer::vector<Value>* vec (Value&);
@@ -112,6 +113,7 @@ public:
   static Lizt* cycle (vector<Value>);
   static Lizt* emit  (Value, veclen);
   static Lizt* map   (Cell*, vector<Lizt*>);
+  static veclen length (Value&); 
   bool isInf ();
 
 private:
