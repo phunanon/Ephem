@@ -30,8 +30,10 @@ FuncList::~FuncList () {
 }
 
 int FuncList::funcAt (fid id) {
-  auto idx = find(ids.begin(), ids.end(), id);
-  return idx != ids.end() ? idx - ids.begin() : -1;
+  for (uint i = 0, iLen = _numFuncs; i < iLen; ++i)
+    if (ids[i] == id)
+      return i;
+  return -1;
 }
 
 vector<Cell*>* FuncList::get (fid id) {
@@ -46,11 +48,13 @@ void FuncList::remove (fid id) {
     delete cell;
   ids.erase(ids.begin() + idx);
   funcs.erase(funcs.begin() + idx);
+  --_numFuncs;
 }
 
 void FuncList::add (fid id, vector<Cell*> cells) {
   ids.push_back(id);
   funcs.push_back(cells);
+  ++_numFuncs;
 }
 
 void EVM::addFunc (fid id, vector<Cell*> cells) {
@@ -90,49 +94,65 @@ Cell* EVM::cellAt (Cell* a, argnum by) {
 
 
 Value EVM::o_Math (Cell* a, Op op) {
-  Value firstVal = a->value;
-  a = a->next;
-  const Type resultT = firstVal.type();
-  const bool isFloat = resultT == T_D32;
-  uint32_t iResult;
-  {
-    uint32_t d = firstVal.u32();
-    memcpy(&iResult, &d, firstVal.size());
-  }
-  float fResult = *(float*)(&iResult);
-  while (a) {
-    Value v = a->value;
-    uint32_t iNext = 0;
-    {
-      uint32_t d = v.u32();
-      memcpy(&iNext, &d, v.size());
-    }
-    if (isFloat) {
-      float fNext = v.type() == T_D32 ? *(float*)(&iNext) : (float)iNext;
+  const Type t = a->value.type();
+  const bool hasSign = a->value.hasSign(), isFloat = t == T_D32, isByte = v0.size() == 1;
+  uint32_t uResult = a->value.u32c();
+  int32_t  sResult = a->value.s32c();
+  float    dResult = a->value.d32c();
+  while ((a = a->next)) {
+    if (isFloat)
       switch (op) {
-        case O_Add: fResult += fNext; break;
-        case O_Sub: fResult -= fNext; break;
-        case O_Mul: fResult *= fNext; break;
-        case O_Div: fResult /= fNext; break;
-        case O_Mod: fResult = fmod(fResult, fNext); break;
+        case O_Add: dResult  += a->value.d32c(); break;
+        case O_Sub: dResult  -= a->value.d32c(); break;
+        case O_Mul: dResult  *= a->value.d32c(); break;
+        case O_Div: dResult  /= a->value.d32c(); break;
+        case O_Mod: dResult  = fmod(dResult, a->value.d32c()); break;
+        case O_Pow: dResult  = pow(dResult, a->value.d32c()); break;
       }
-    } else {
-      if (v.type() == T_D32) iNext = *(float*)(&iNext);
+    else if (hasSign)
       switch (op) {
-        case O_Add: iResult += iNext; break;
-        case O_Sub: iResult -= iNext; break;
-        case O_Mul: iResult *= iNext; break;
-        case O_Div: iResult /= iNext; break;
-        case O_Mod: iResult %= iNext; break;
+        case O_Add: sResult  += a->value.s32c(); break;
+        case O_Sub: sResult  -= a->value.s32c(); break;
+        case O_Mul: sResult  *= a->value.s32c(); break;
+        case O_Div: sResult  /= a->value.s32c(); break;
+        case O_Mod: sResult  %= a->value.s32c(); break;
+        case O_Pow: sResult  = pow(sResult, a->value.s32c()); break;
+        case O_BA:  sResult  &= a->value.s32c(); break;
+        case O_BO:  sResult  |= a->value.s32c(); break;
+        case O_BXO: sResult  ^= a->value.s32c(); break;
+        case O_BLS: sResult <<= a->value.s32c(); break;
+        case O_BRS: sResult >>= a->value.s32c(); break;
       }
-    }
-    a = a->next;
+    else
+      switch (op) {
+        case O_Add: uResult  += a->value.u32c(); break;
+        case O_Sub: uResult  -= a->value.u32c(); break;
+        case O_Mul: uResult  *= a->value.u32c(); break;
+        case O_Div: uResult  /= a->value.u32c(); break;
+        case O_Mod: uResult  %= a->value.u32c(); break;
+        case O_Pow: uResult  = pow(uResult, a->value.u32c()); break;
+        case O_BA:  uResult  &= a->value.u32c(); break;
+        case O_BO:  uResult  |= a->value.u32c(); break;
+        case O_BXO: uResult  ^= a->value.u32c(); break;
+        case O_BLS: uResult <<= a->value.u32c(); break;
+        case O_BRS: uResult >>= a->value.u32c(); break;
+      }
+    if (isByte) sResult &= 0xFF;
   }
-  if (isFloat)
-    return Value(Data{.d32 = fResult}, resultT);
-  return Value(Data{.u32 = iResult}, resultT);
+  if (isFloat) return Value(Data{.d32=dResult}, t);
+  if (hasSign) return Value(Data{.s32=sResult}, t);
+  return Value(Data{.u32=uResult}, t);
 }
 
+Value o_BN (Value v) {
+  switch (v.type()) {
+    case T_U08: return Value{Data{.u08=(uint8_t)~v.u08()}, T_U08};
+    case T_S08: return Value{Data{.s08=(char)~v.s08()}, T_S08};
+    case T_U32: return Value{Data{.u32=~v.u32()}, T_U32};
+    case T_S32: return Value{Data{.s32=~v.s32()}, T_S32};
+  }
+  return Value();
+}
 
 bool areEqual (Value v0, Value v1) {
   return v0.u32() == v1.u32();
@@ -349,9 +369,10 @@ Value EVM::o_Print (Cell* a, bool nl) {
 
 Value EVM::exeOp (Op op, Cell* a) {
   switch (op) {
-    case O_Add: case O_Sub: case O_Mul: case O_Div:
-    case O_Mod:
+    case O_Add: case O_Sub: case O_Mul: case O_Div: case O_Mod: case O_Pow:
+    case O_BA: case O_BO: case O_BXO: case O_BLS: case O_BRS:
                    return o_Math(a, op);
+    case O_BN:     return o_BN(a->value);
     case O_Alike: case O_NAlike: case O_Equal: case O_NEqual:
     case O_GThan: case O_LThan: case O_GETo: case O_LETo:
                    return o_Equal(a, op);
@@ -379,10 +400,6 @@ Value EVM::exeOp (Op op, Cell* a) {
 
 Value EVM::eval (Cell* a, Cell* p) {
   Type t = a->value.type();
-  //if (t == T_Cell || t == T_Lamb) {
-  //  //Have lambdas use neighbour as parameter list
-  //  if (t == T_Lamb)
-  //    p = a->next;
   if (t == T_Cell) {
     //Evaluate all form arguments
     a = a->value.cell();

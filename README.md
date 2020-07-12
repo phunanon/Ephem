@@ -27,7 +27,7 @@ N
 **Concepts:**  
 - S-expressions
 - Dynamic
-- Automatic Reference Counting (ARC) memory management
+- Auto Reference Counting (ARC) memory management
 - Has REPL
 - Hotloadable (NYA)
 - Lazy
@@ -57,7 +57,7 @@ N
 - No native operation overrides
 
 **Characteristics**
-- x86 is ~2x slower but x64 uses ~1.75x more memory
+- x86 is ~2x slower but x64 uses ~2x more memory
 
 ## Usage
 
@@ -73,6 +73,16 @@ Execute the `build/ephem` binary.
 
 ### Literals
 
+| Representations                      | Data type               |
+| ------------------------------------ | ----------------------- |
+| `T F N`                              | true, false, nil        |
+| `\a`                                 | character               |
+| `0x1` or `0x12`                      | 8 bit unsigned integer  |
+| `1234` or `0x123…`                   | 32 bit unsigned integer |
+| `-1234` or `0x123…`                  | 32 bit signed integer   |
+| `3.14` or `.14` or `-3.14` or `-.14` | 32 bit signed float     |
+| `[1 2 3]`                            | vector                  |
+
 ### Functions
 
 ### Native operations
@@ -80,7 +90,7 @@ Execute the `build/ephem` binary.
 `(if cond if-true) (if cond if-true if-false)`  
 
 `+ - * / mod`  
-e.g. `(+ 1 2 3)`
+e.g. `(+ 1 2 3)` uses first type, (+ \a 3)
 
 **Likeness vs. Equality**  
 Equality compares the 4 bytes of information inside a Value, which may be a primitive type or pointer to a more complex type.  

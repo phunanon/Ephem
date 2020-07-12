@@ -13,16 +13,11 @@ struct Cell;
 class Lizt;
 
 union Data {
-  void*    ptr;
-  Cell*    cell;
+  void*    ptr; Cell*    cell;
   bool     tru;
   Op       op;
-  uint8_t  u08;
-  char     s08;
-  uint16_t u16;
-  int16_t  s16;
-  uint32_t u32 = 0;
-  int32_t  s32;
+  uint8_t  u08; char     s08;
+  uint32_t u32; int32_t  s32 = 0;
   float    d32;
   fid      fID;
 };
@@ -34,31 +29,51 @@ class Value {
   Type _type = T_N;
 
 public:
-  Value ();
+  Value () {}
   Value (Data, Type);
   Value (const Value&);
   Value& operator= (const Value&);
   ~Value ();
 
   void     kill ();
-  Data     data ();
-  Type     type ();
-  uint8_t  size ();
-  bool     tru  (); //Coerce to bool
-  Op       op   ();
-  void*    ptr  ();
-  uint8_t  u08  ();
-  char     s08  ();
-  uint16_t u16  ();
-  int16_t  s16  ();
-  uint32_t u32  ();
-  int32_t  s32  ();
-  float    d32  ();
-  fid      func ();
-  string   str  ();
-  Cell*    cell ();
-  Lizt*    lizt ();
-  float    d32c (); //Coerce to d32
+  Data     data () { return _data; }
+  Type     type () { return _type; }
+  void*    ptr  () { return _data.ptr; }
+  uint8_t  u08  () { return _data.u08; }
+  char     s08  () { return _data.s08; }
+  uint32_t u32  () { return _data.u32; }
+  int32_t  s32  () { return _data.s32; }
+  float    d32  () { return _data.d32; }
+  fid      func () { return _data.fID; }
+  string   str  () { return *(string*)_data.ptr; }
+  Cell*    cell () { return (Cell*)_data.ptr; }
+  Lizt*    lizt () { return (Lizt*)_data.ptr; }
+  //Coercions & information
+  uint8_t  size () {
+    switch (_type) {
+      case T_Op: case T_U08: case T_S08: case T_Bool: return 1;
+      case T_U32: case T_S32: case T_D32: return 4;
+      default: return 0; //TODO add more
+    }
+  }
+  bool     tru  () { return _type == T_Bool ? _data.tru : _type != T_N; };
+  Op       op   () { return _type == T_Op ? _data.op : O_None; }
+  uint32_t u32c () { 
+    switch (_type) {
+      case T_U08: return u08(); case T_S08: return s08();
+      case T_S32: return s32(); case T_D32: return d32();
+      default: return u32();
+    }
+  }
+  int32_t s32c () { 
+    switch (_type) {
+      case T_U08: return u08(); case T_S08: return s08();
+      case T_U32: return u32(); case T_D32: return d32();
+      default: return s32();
+    }
+  }
+  float    d32c () { return _type == T_D32 ? d32() : (float)s32(); }
+  bool     hasSign () { return _type == T_S08 || _type == T_S32 || _type == T_D32; }
 };
 
 immer::vector<Value>* vec (Value&);

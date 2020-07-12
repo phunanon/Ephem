@@ -12,9 +12,7 @@ bool isWhite (char c) {
 }
 
 bool isNumber (const string& s) {
-  //return ('0' <= s[0] && s[0] <= '9')
-  //  || (s[0] == '-' && '0' <= s[1] && s[1] <= '9');
-  return strspn(s.c_str(), "-.0123456789bw") == s.size();
+  return strspn(s.c_str(), "-.0123456789x") == s.size();
 }
 
 
@@ -187,16 +185,17 @@ Cell* cellise (deque<Token> &tokens, vector<string> paras) {
           break;
         }
         case Token::Number: {
-          //FIXME for bytes and words
-          if (token.str.find('.') != string::npos) {
-            if (token.str[0] == '.')
-              token.str = '0' + token.str;
-            data.d32 = stof(token.str);
-            type = T_D32;
-          } else {
-            data.u32 = stoi(token.str);
-            type = T_U32;
-          }
+          bool isD32  = token.str.find('.') != string::npos;
+          bool isNeg  = token.str[0] == '-';
+          bool preDot = token.str[isNeg] == '.';
+          bool isHex  = token.str.find('x') != string::npos;
+          bool isByte = isHex && token.str.size() <= 4;
+          type = isD32 ? T_D32 : (isNeg ? T_S32 : (isByte ? T_U08 : T_U32));
+          token.str = token.str.substr(preDot ? isNeg + preDot : 0);
+          if (isByte)     data.u08 = stoi(token.str, nullptr, 16);
+          else if (isD32) data.d32 = stof(preDot ? (isNeg ? "-0." : "0.") + token.str : token.str);
+          else if (isNeg) data.s32 = stoi(token.str, nullptr, isHex ? 16 : 10);
+          else            data.u32 = stoul(token.str, nullptr, isHex ? 16 : 10);
           break;
         }
         case Token::String: {

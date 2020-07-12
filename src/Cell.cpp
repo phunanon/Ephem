@@ -11,8 +11,6 @@ static refnum newRef () {
   return ref;
 }
 
-Value::Value () {}
-
 void Value::setRef () {
   if (_type == T_Cell || _type == T_Lamb || _type == T_Str || _type == T_Vec || _type == T_Lizt)
     refs[_ref = newRef()] = 1;
@@ -54,38 +52,6 @@ void Value::kill () {
   _data = Data{};
   _type = T_N;
 }
-Data Value::data () { return _data; }
-Type Value::type () { return _type; }
-
-uint8_t Value::size () {
-  switch (_type) {
-    case T_U08: return 1;
-    case T_U32: case T_S32: case T_D32: return 4;
-    //TODO
-  }
-  return 0;
-}
-
-bool Value::tru () {
-  if (_type == T_Bool) return _data.tru;
-  return _type != T_N;
-}
-Op Value::op () {
-  return _type == T_Op ? _data.op : O_None;
-}
-void*    Value::ptr () { return _data.ptr; }
-uint8_t  Value::u08 () { return _data.u08; }
-char     Value::s08 () { return _data.s08; }
-uint16_t Value::u16 () { return _data.u16; }
-int16_t  Value::s16 () { return _data.s16; }
-uint32_t Value::u32 () { return _data.u32; }
-int32_t  Value::s32 () { return _data.s32; }
-float    Value::d32 () { return _data.d32; }
-fid      Value::func() { return _data.fID; }
-string   Value::str () { return *(string*)_data.ptr; }
-Lizt*    Value::lizt() { return (Lizt*)_data.ptr; }
-Cell*    Value::cell() { return (Cell*)_data.ptr; }
-float    Value::d32c() { return _type == T_D32 ? d32() : (float)s32(); }
 
 
 immer::vector<Value>* vec (Value &v) {

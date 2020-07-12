@@ -7,8 +7,10 @@ using namespace std;
 class FuncList {
   vector<fid> ids = vector<fid>();
   vector<vector<Cell*>> funcs = vector<vector<Cell*>>();
+  fid _numFuncs;
 public:
   ~FuncList ();
+  fid numFuncs () { return _numFuncs; };
   int funcAt (fid);
   vector<Cell*>* get (fid);
   void remove (fid);
