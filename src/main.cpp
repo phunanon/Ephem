@@ -36,7 +36,7 @@ void repl () {
       Cell* evaled = new Cell{vm.exeFunc(0, previous)};
       delete previous;
       previous = evaled;
-      printf("%s\n", vm.toStr(evaled->value).c_str());
+      printf("%s\n", vm.toStr(evaled->val).c_str());
     }
   }
   delete previous;

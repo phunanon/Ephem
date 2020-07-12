@@ -79,7 +79,7 @@ public:
 immer::vector<Value>* vec (Value&);
 
 struct Cell {
-  Value value;
+  Value val;
   Cell* next = nullptr;
   ~Cell ();
   static bool checkMemLeak();

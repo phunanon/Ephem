@@ -11,7 +11,7 @@ argnum numArgs (Cell* a) {
 }
 
 bool isCallType (Cell* a) {
-  Type t = a->value.type();
+  Type t = a->val.type();
   return t == T_Lamb || t == T_Op || t == T_Func;
 }
 
@@ -80,7 +80,7 @@ Value EVM::exeFunc (fid id, Cell* params) {
 //Returns value after traversal across cell->next, or nil
 Value EVM::valAt (Cell* a, argnum by) {
   a = cellAt(a, by);
-  return a ? a->value : Value();
+  return a ? a->val : Value();
 }
 
 //Returns Cell* after traversal across cell->next, or nullptr
@@ -94,48 +94,48 @@ Cell* EVM::cellAt (Cell* a, argnum by) {
 
 
 Value EVM::o_Math (Cell* a, Op op) {
-  const Type t = a->value.type();
-  const bool hasSign = a->value.hasSign(), isFloat = t == T_D32, isByte = v0.size() == 1;
-  uint32_t uResult = a->value.u32c();
-  int32_t  sResult = a->value.s32c();
-  float    dResult = a->value.d32c();
+  const Type t = a->val.type();
+  const bool hasSign = a->val.hasSign(), isFloat = t == T_D32, isByte = v0.size() == 1;
+  uint32_t uResult = a->val.u32c();
+  int32_t  sResult = a->val.s32c();
+  float    dResult = a->val.d32c();
   while ((a = a->next)) {
     if (isFloat)
       switch (op) {
-        case O_Add: dResult  += a->value.d32c(); break;
-        case O_Sub: dResult  -= a->value.d32c(); break;
-        case O_Mul: dResult  *= a->value.d32c(); break;
-        case O_Div: dResult  /= a->value.d32c(); break;
-        case O_Mod: dResult  = fmod(dResult, a->value.d32c()); break;
-        case O_Pow: dResult  = pow(dResult, a->value.d32c()); break;
+        case O_Add: dResult  += a->val.d32c(); break;
+        case O_Sub: dResult  -= a->val.d32c(); break;
+        case O_Mul: dResult  *= a->val.d32c(); break;
+        case O_Div: dResult  /= a->val.d32c(); break;
+        case O_Mod: dResult  = fmod(dResult, a->val.d32c()); break;
+        case O_Pow: dResult  = pow(dResult, a->val.d32c()); break;
       }
     else if (hasSign)
       switch (op) {
-        case O_Add: sResult  += a->value.s32c(); break;
-        case O_Sub: sResult  -= a->value.s32c(); break;
-        case O_Mul: sResult  *= a->value.s32c(); break;
-        case O_Div: sResult  /= a->value.s32c(); break;
-        case O_Mod: sResult  %= a->value.s32c(); break;
-        case O_Pow: sResult  = pow(sResult, a->value.s32c()); break;
-        case O_BA:  sResult  &= a->value.s32c(); break;
-        case O_BO:  sResult  |= a->value.s32c(); break;
-        case O_BXO: sResult  ^= a->value.s32c(); break;
-        case O_BLS: sResult <<= a->value.s32c(); break;
-        case O_BRS: sResult >>= a->value.s32c(); break;
+        case O_Add: sResult  += a->val.s32c(); break;
+        case O_Sub: sResult  -= a->val.s32c(); break;
+        case O_Mul: sResult  *= a->val.s32c(); break;
+        case O_Div: sResult  /= a->val.s32c(); break;
+        case O_Mod: sResult  %= a->val.s32c(); break;
+        case O_Pow: sResult  = pow(sResult, a->val.s32c()); break;
+        case O_BA:  sResult  &= a->val.s32c(); break;
+        case O_BO:  sResult  |= a->val.s32c(); break;
+        case O_BXO: sResult  ^= a->val.s32c(); break;
+        case O_BLS: sResult <<= a->val.s32c(); break;
+        case O_BRS: sResult >>= a->val.s32c(); break;
       }
     else
       switch (op) {
-        case O_Add: uResult  += a->value.u32c(); break;
-        case O_Sub: uResult  -= a->value.u32c(); break;
-        case O_Mul: uResult  *= a->value.u32c(); break;
-        case O_Div: uResult  /= a->value.u32c(); break;
-        case O_Mod: uResult  %= a->value.u32c(); break;
-        case O_Pow: uResult  = pow(uResult, a->value.u32c()); break;
-        case O_BA:  uResult  &= a->value.u32c(); break;
-        case O_BO:  uResult  |= a->value.u32c(); break;
-        case O_BXO: uResult  ^= a->value.u32c(); break;
-        case O_BLS: uResult <<= a->value.u32c(); break;
-        case O_BRS: uResult >>= a->value.u32c(); break;
+        case O_Add: uResult  += a->val.u32c(); break;
+        case O_Sub: uResult  -= a->val.u32c(); break;
+        case O_Mul: uResult  *= a->val.u32c(); break;
+        case O_Div: uResult  /= a->val.u32c(); break;
+        case O_Mod: uResult  %= a->val.u32c(); break;
+        case O_Pow: uResult  = pow(uResult, a->val.u32c()); break;
+        case O_BA:  uResult  &= a->val.u32c(); break;
+        case O_BO:  uResult  |= a->val.u32c(); break;
+        case O_BXO: uResult  ^= a->val.u32c(); break;
+        case O_BLS: uResult <<= a->val.u32c(); break;
+        case O_BRS: uResult >>= a->val.u32c(); break;
       }
     if (isByte) sResult &= 0xFF;
   }
@@ -210,10 +210,10 @@ bool numDiff (Value v0, Value v1, bool greater) {
 
 Value EVM::o_Equal (Cell* a, Op op) {
   if (!a) return Value();
-  Value v0 = a->value;
+  Value v0 = a->val;
   //Loop will break early on false comparison
   while ((a = a->next)) {
-    Value v1 = a->value;
+    Value v1 = a->val;
     if ((v0.type() == T_Str || v1.type() == T_Str) && v0.type() != v1.type())
       break; //Mutual string comparison only
     switch (op) {
@@ -244,7 +244,7 @@ Value EVM::o_Equal (Cell* a, Op op) {
 Value EVM::o_Vec (Cell* a) {
   auto vect = immer::vector_transient<Value>();
   while (a) {
-    vect.push_back(a->value);
+    vect.push_back(a->val);
     a = a->next;
   }
   return Value(Data{.ptr=new immer::vector<Value>(vect.persistent())}, T_Vec);
@@ -255,7 +255,7 @@ Value EVM::o_Vec (Cell* a) {
 //  e.g. (skip n vec)
 Value EVM::o_Skip (Cell* a) {
   if (numArgs(a) != 2) return Value();
-  auto take = new Lizt::Take{Lizt::list(a->next->value), a->value.s32(), -1};
+  auto take = new Lizt::Take{Lizt::list(a->next->val), a->val.s32(), -1};
   return Value(Data{.ptr=Lizt::take(take)}, T_Lizt);
 }
 
@@ -265,8 +265,8 @@ Value EVM::o_Skip (Cell* a) {
 Value EVM::o_Take (Cell* a) {
   argnum n = numArgs(a);
   if (n < 2) return Value();
-  auto takeN = a->value.s32();
-  auto skipN = n == 3 ? a->next->value.s32() : 0;
+  auto takeN = a->val.s32();
+  auto skipN = n == 3 ? a->next->val.s32() : 0;
   Lizt* lizt = Lizt::list(valAt(a, n == 2 ? 1 : 2));
   if (!lizt->isInf() && skipN + takeN > lizt->len)
     takeN = lizt->len - skipN;
@@ -281,12 +281,12 @@ Value EVM::o_Take (Cell* a) {
 Value EVM::o_Range (Cell* a) {
   int32_t from = 0, to = 0, step = a ? 1 : 0;
   auto n = numArgs(a);
-  if (n == 1) to = a->value.s32();
+  if (n == 1) to = a->val.s32();
   else if (n > 1) {
-    from = a->value.s32();
-    to = a->next->value.s32();
+    from = a->val.s32();
+    to = a->next->val.s32();
     if (n == 3)
-      step = a->next->next->value.s32();
+      step = a->next->next->val.s32();
   }
   if (n != 3 && to < 0)
     step = -1;
@@ -297,7 +297,7 @@ Value EVM::o_Range (Cell* a) {
 Value EVM::o_Cycle (Cell* a) {
   auto vals = vector<Value>();
   while (a) {
-    vals.push_back(a->value);
+    vals.push_back(a->val);
     a = a->next;
   }
   return Value(Data{.ptr=Lizt::cycle(vals)}, T_Lizt);
@@ -306,17 +306,17 @@ Value EVM::o_Cycle (Cell* a) {
 
 Value EVM::o_Emit (Cell* a) {
   if (!a) return Value();
-  veclen len = a->next ? a->next->value.s32() : -1;
-  return Value(Data{.ptr=Lizt::emit(a->value, len)}, T_Lizt);
+  veclen len = a->next ? a->next->val.s32() : -1;
+  return Value(Data{.ptr=Lizt::emit(a->val, len)}, T_Lizt);
 }
 
 
 Value EVM::o_Map (Cell* a) {
   if (!isCallType(a)) return Value();
-  Cell* head = new Cell{a->value};
+  Cell* head = new Cell{a->val};
   auto vectors = vector<Lizt*>();
   while ((a = a->next))
-    vectors.push_back(Lizt::list(a->value));
+    vectors.push_back(Lizt::list(a->val));
   return Value(Data{.ptr=Lizt::map(head, vectors)}, T_Lizt);
 }
 
@@ -331,7 +331,7 @@ Value EVM::o_Where (Cell* a) {
   veclen skipN = n == 4 ? valAt(a, 2).s32() : 0;
   uint   takeN = n >= 3 ? valAt(a, 1).s32() : lizt.len;
   auto list = immer::vector_transient<Value>();
-  Cell head = Cell{a->value};
+  Cell head = Cell{a->val};
   Cell form = Cell{Value(Data{.cell=&head}, T_Cell)};
   for (veclen i = skipN; i < lizt.len && list.size() < takeN; ++i) {
     Value testVal = liztAt(&lizt, i);
@@ -342,7 +342,7 @@ Value EVM::o_Where (Cell* a) {
     list.push_back(testVal);
   }
   head.next = nullptr;
-  form.value.kill(); //To ensure head isn't deleted
+  form.val.kill(); //To ensure head isn't deleted
   auto iVec = new immer::vector<Value>(list.persistent());
   return Value(Data{.ptr=iVec}, T_Vec);
 }
@@ -351,7 +351,7 @@ Value EVM::o_Where (Cell* a) {
 Value EVM::o_Str (Cell* a) {
   auto str = new string();
   while (a) {
-    *str += toStr(a->value);
+    *str += toStr(a->val);
     a = a->next;
   }
   return Value(Data{.ptr = str}, T_Str);
@@ -372,7 +372,7 @@ Value EVM::exeOp (Op op, Cell* a) {
     case O_Add: case O_Sub: case O_Mul: case O_Div: case O_Mod: case O_Pow:
     case O_BA: case O_BO: case O_BXO: case O_BLS: case O_BRS:
                    return o_Math(a, op);
-    case O_BN:     return o_BN(a->value);
+    case O_BN:     return o_BN(a->val);
     case O_Alike: case O_NAlike: case O_Equal: case O_NEqual:
     case O_GThan: case O_LThan: case O_GETo: case O_LETo:
                    return o_Equal(a, op);
@@ -388,24 +388,24 @@ Value EVM::exeOp (Op op, Cell* a) {
     case O_Print: case O_Prinln:
                    return o_Print(a, op == O_Prinln);
 
-    case O_Not:    return Value{Data{.tru=!a->value.tru()}, T_Bool};
-    case O_Val:    return a->value;
+    case O_Not:    return Value{Data{.tru=!a->val.tru()}, T_Bool};
+    case O_Val:    return a->val;
     case O_Do:
       do {
-        if (!a->next) return a->value;
+        if (!a->next) return a->val;
       } while ((a = a->next));
   }
   return Value();
 }
 
 Value EVM::eval (Cell* a, Cell* p) {
-  Type t = a->value.type();
+  Type t = a->val.type();
   if (t == T_Cell) {
     //Evaluate all form arguments
-    a = a->value.cell();
+    a = a->val.cell();
     Cell head = Cell{eval(a, p)}, *arg = &head;
     //Handle short-circuited forms
-    if (head.value.op() == O_If)
+    if (head.val.op() == O_If)
       return eval(cellAt(a, eval(a->next, p).tru() ? 2 : 3), p);
     //Continue collecting arguments
     while ((a = a->next)) {
@@ -413,25 +413,25 @@ Value EVM::eval (Cell* a, Cell* p) {
       arg->next = new Cell{eval(a, p)};
     }
     //... then call the operation/lambda/function
-    if (head.value.type() == T_Op)
-      return head.value.op()
-        ? exeOp(head.value.op(), head.next)
-        : head.value; //This can happen with REPL non-form evals(?)
+    if (head.val.type() == T_Op)
+      return head.val.op()
+        ? exeOp(head.val.op(), head.next)
+        : head.val; //This can happen with REPL non-form evals(?)
     else
-    if (head.value.type() == T_Lamb) {
-      Cell lHead = Cell{Value{head.value.data(), T_Cell}};
+    if (head.val.type() == T_Lamb) {
+      Cell lHead = Cell{Value{head.val.data(), T_Cell}};
       auto ret = eval(&lHead, head.next);
-      lHead.value.kill();
+      lHead.val.kill();
       return ret;
     } else
-    if (head.value.type() == T_Func)
-      return exeFunc(head.value.func(), head.next);
+    if (head.val.type() == T_Func)
+      return exeFunc(head.val.func(), head.next);
   }
   //Return parameter or nil
   if (t == T_Para)
-    return p ? valAt(p, a->value.u08()) : Value();
+    return p ? valAt(p, a->val.u08()) : Value();
   //TODO: variables
-  return a->value;
+  return a->val;
 }
 
 
@@ -494,7 +494,7 @@ Value EVM::liztAt (Lizt* l, veclen at) {
       //Create a temporary form Cell
       Cell form = Cell{Value(Data{.cell=m->head}, T_Cell)};
       Value v = eval(&form);
-      form.value.kill(); //Ensure head is not destroyed with form
+      form.val.kill(); //Ensure head is not destroyed with form
       m->head->next = nullptr;
       return v;
     }
