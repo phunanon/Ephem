@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <string>
+#include "Env.hpp"
 #include "Cell.hpp"
 using namespace std;
 
@@ -19,12 +20,15 @@ public:
 
 class EVM {
 public:
+  EVM (Env e) { env = e; }
+
   void addFunc (fid, vector<Cell*>);
   void removeFunc (fid);
   Value exeFunc (fid, Cell* = nullptr);
   string toStr (Value);
 
 private:
+  Env env;
   FuncList funcs = FuncList();
   bool doRecur = false;
   Cell* recurArgs = nullptr;

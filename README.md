@@ -189,9 +189,21 @@ Vectors have a fixed length. Lizts either have a fixed expected length or infini
 
 `(vec [1..])`  
 
-  O_Vec, O_Skip, O_Take, O_Range, O_Cycle, O_Emit,
-  O_Map, O_Where,
-  O_Str, O_Print, O_Priln, O_Val, O_Do
+O_Skip, O_Take, O_Range, O_Cycle, O_Emit, O_Map, O_Where
+
+**Environment**
+
+`(print [1..])` `(println [0..])`  
+Prints the string representation of arguments to the terminal.
+
+`(get-key)`  
+Gets the next buffered character from terminal input. Returns `N` if no key was in the buffer.
+
+`(get-str)`  
+Gets a string of text from terminal input, blocking Ephem until Enter is pressed.
+
+`(sleep)` `(sleep num-seconds)`  
+Blocks Ephem for a duration of `num-seconds` or 1 second. `num-seconds` may be a float.
 
 ## Design and characteristics
 

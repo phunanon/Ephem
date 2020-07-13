@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iterator>
 #include "linenoise/linenoise.h"
+#include "keypresses.c"
 #include "Parser.hpp"
 #include "EVM.hpp"
 using namespace std;
@@ -18,7 +19,7 @@ bool parseAndLoad (EVM &vm, string input) {
 
 void repl () {
   printf("Ephem REPL. %% gives previous result. Arrow keys navigate history/entry. q or ^C to quit.\n");
-  EVM vm = EVM();
+  EVM vm = EVM(Env());
   Cell* previous = nullptr;
   while (true) {
     string input;
@@ -43,9 +44,10 @@ void repl () {
 }
 
 int main (int argc, char *argv[]) {
+  kb_listen();
   if (argc > 1) {
     ifstream infile{string(argv[1])};
-    EVM vm = EVM();
+    EVM vm = EVM(Env());
     parseAndLoad(vm, {istreambuf_iterator<char>(infile), istreambuf_iterator<char>()});
     vm.exeFunc(0, nullptr);
   } else repl();

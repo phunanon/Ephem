@@ -23,7 +23,8 @@ enum Op : uint8_t {
   O_BA, O_BO, O_BXO, O_BLS, O_BRS, O_BN,
   O_Vec, O_Skip, O_Take, O_Range, O_Cycle, O_Emit,
   O_Map, O_Where, O_Reduce,
-  O_Str, O_Print, O_Prinln, O_Val, O_Do
+  O_Str, O_Val, O_Do,
+  O_Print, O_Prinln, O_RKey, O_RStr, O_Sleep
 };
 
 const char* const ops[] = {
@@ -34,5 +35,7 @@ const char* const ops[] = {
   "&", "|", "^", "<<", ">>", "~",
   "vec", "skip", "take", "range", "cycle", "emit",
   "map", "where", "reduce",
-  "str", "print", "println", "val", "do", 0
+  "str", "val", "do",
+  "print", "println", "get-key", "get-str", "sleep",
+  0
 };

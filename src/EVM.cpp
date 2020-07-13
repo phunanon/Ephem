@@ -370,8 +370,8 @@ Value EVM::o_Str (Cell* a) {
 
 Value EVM::o_Print (Cell* a, bool nl) {
   Value v = o_Str(a);
-  printf("%s", v.str().c_str());
-  if (nl) printf("\n");
+  env.print(v.str().c_str());
+  if (nl) env.print("\n");
   else fflush(stdout);
   return Value();
 }
@@ -404,6 +404,15 @@ Value EVM::exeOp (Op op, Cell* a) {
       do {
         if (!a->next) return a->val;
       } while ((a = a->next));
+    case O_RKey: {
+      char ch = Env::getKey();
+      return ch ? Value{Data{.s08=ch}, T_S08} : Value();
+    }
+    case O_RStr: {
+      string prompt = a ? a->val.str() : "";
+      return Value{Data{.ptr=Env::getString(prompt)}, T_Str};
+    }
+    case O_Sleep: env.sleep(a ? a->val.d32c() * 1000 : 1000); break;
   }
   return Value();
 }
