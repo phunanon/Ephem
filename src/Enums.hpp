@@ -16,7 +16,7 @@ enum Type : uint8_t {
 };
 
 enum Op : uint8_t {
-  O_None, O_If, O_Not,
+  O_None, O_If, O_Not, O_Recur, O_Or, O_And,
   O_Add, O_Sub, O_Mul, O_Div, O_Mod, O_Pow,
   O_Alike, O_NAlike, O_Equal, O_NEqual,
   O_GThan, O_LThan, O_GETo, O_LETo,
@@ -27,12 +27,12 @@ enum Op : uint8_t {
 };
 
 const char* const ops[] = {
-  "none", "if", "not",
+  "none", "if", "not", "recur", "or", "and",
   "+", "-", "*", "/", "mod", "**",
   "=", "!=", "==", "!==",
   "<", ">", "<=", ">=",
   "&", "|", "^", "<<", ">>", "~",
   "vec", "skip", "take", "range", "cycle", "emit",
-  "map", "where",
+  "map", "where", "reduce",
   "str", "print", "println", "val", "do", 0
 };

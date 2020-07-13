@@ -71,8 +71,18 @@ Value EVM::exeFunc (fid id, Cell* params) {
   auto func = funcs.get(id);
   if (!func) return Value();
   Value ret;
-  for (uint i = 0, iLen = func->size(); i < iLen; ++i)
+  for (uint i = 0, iLen = func->size(); i < iLen; ++i) {
     ret = eval(func->at(i), params);
+    if (recurGarbage) {
+      delete recurGarbage;
+      recurGarbage = nullptr;
+    }
+    if (doRecur) {
+      doRecur = false;
+      i = -1;
+      params = recurGarbage = recurArgs;
+    }
+  }
   return ret;
 }
 
@@ -95,7 +105,7 @@ Cell* EVM::cellAt (Cell* a, argnum by) {
 
 Value EVM::o_Math (Cell* a, Op op) {
   const Type t = a->val.type();
-  const bool hasSign = a->val.hasSign(), isFloat = t == T_D32, isByte = v0.size() == 1;
+  const bool hasSign = a->val.hasSign(), isFloat = t == T_D32, isByte = a->val.size() == 1;
   uint32_t uResult = a->val.u32c();
   int32_t  sResult = a->val.s32c();
   float    dResult = a->val.d32c();
@@ -399,25 +409,45 @@ Value EVM::exeOp (Op op, Cell* a) {
 }
 
 Value EVM::eval (Cell* a, Cell* p) {
+  if (doRecur) return Value();
   Type t = a->val.type();
   if (t == T_Cell) {
     //Evaluate all form arguments
     a = a->val.cell();
     Cell head = Cell{eval(a, p)}, *arg = &head;
+    Op op = head.val.op();
     //Handle short-circuited forms
-    if (head.val.op() == O_If)
-      return eval(cellAt(a, eval(a->next, p).tru() ? 2 : 3), p);
+    if (op) {
+      if (op == O_If)
+        return eval(cellAt(a, eval(a->next, p).tru() ? 2 : 3), p);
+      if (op == O_Or) {
+        while ((a = a->next))
+          if (auto ret = eval(a, p); ret.tru())
+            return ret;
+        return Value();
+      }
+      if (op == O_And) {
+        while ((a = a->next))
+          if (!eval(a, p).tru())
+            return Value{Data{.tru=false}, T_Bool};
+        return Value{Data{.tru=true}, T_Bool};
+      }
+    }
     //Continue collecting arguments
     while ((a = a->next)) {
       arg = arg->next ? arg->next : arg;
       arg->next = new Cell{eval(a, p)};
     }
     //... then call the operation/lambda/function
-    if (head.val.type() == T_Op)
-      return head.val.op()
-        ? exeOp(head.val.op(), head.next)
-        : head.val; //This can happen with REPL non-form evals(?)
-    else
+    if (head.val.type() == T_Op) {
+      if (op == O_Recur) {
+        doRecur = true;
+        recurArgs = head.next ? new Cell{head.next->val} : nullptr;
+        head.next = nullptr;
+        return Value();
+      }
+      return op ? exeOp(op, head.next) : head.val;
+    } else
     if (head.val.type() == T_Lamb) {
       Cell lHead = Cell{Value{head.val.data(), T_Cell}};
       auto ret = eval(&lHead, head.next);

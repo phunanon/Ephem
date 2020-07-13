@@ -26,6 +26,10 @@ public:
 
 private:
   FuncList funcs = FuncList();
+  bool doRecur = false;
+  Cell* recurArgs = nullptr;
+  Cell* recurGarbage = nullptr;
+
   Value exeOp (Op, Cell*);
   Value eval (Cell*, Cell* = nullptr);
   Value valAt (Cell*, argnum);

@@ -17,9 +17,9 @@ union Data {
   bool     tru;
   Op       op;
   uint8_t  u08; char     s08;
-  uint32_t u32; int32_t  s32 = 0;
+  uint32_t u32; int32_t  s32;
   float    d32;
-  fid      fID;
+  fid      fID = 0;
 };
 
 class Value {
