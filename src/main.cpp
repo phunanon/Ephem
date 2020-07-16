@@ -1,3 +1,4 @@
+#include <mimalloc.h>
 #include <string>
 #include <vector>
 #include <fstream>

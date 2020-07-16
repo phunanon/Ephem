@@ -12,7 +12,9 @@ bool isWhite (char c) {
 }
 
 bool isNumber (const string& s) {
-  return strspn(s.c_str(), "-.0123456789x") == s.size();
+  if (s.substr(0, 2) == "0x")
+    return strspn(s.c_str(), "-.0123456789x") == s.size();
+  return strspn(s.c_str(), "-.0123456789") == s.size();
 }
 
 
@@ -114,7 +116,7 @@ vector<Token> tokenise (const string& input) {
         type = Token::Char;
       else if (c == '%')
         type = Token::Para;
-      else if (isNumber(next) && !(next.length() == 1 && (c == '-' || c == '+')))
+      else if (isNumber(next) && !(next.length() == 1 && c == '-'))
         type = Token::Number;
       else if (c == '.')
         type = Token::Period;

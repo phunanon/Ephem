@@ -25,7 +25,8 @@ T hcpy (T* ptr) {
 
 
 FuncList::~FuncList () {
-  for (auto id : ids)
+  auto idsToRem = ids;
+  for (auto id : idsToRem)
     remove(id);
 }
 
@@ -378,14 +379,12 @@ Value EVM::o_Print (Cell* a, bool nl) {
 
 
 Value EVM::exeOp (Op op, Cell* a) {
+  if (O_Add <= op && op <= O_BRS)
+    return o_Math(a, op);
+  if (O_Alike <= op && op <= O_LETo)
+    return o_Equal(a, op);
   switch (op) {
-    case O_Add: case O_Sub: case O_Mul: case O_Div: case O_Mod: case O_Pow:
-    case O_BA: case O_BO: case O_BXO: case O_BLS: case O_BRS:
-                   return o_Math(a, op);
     case O_BN:     return o_BN(a->val);
-    case O_Alike: case O_NAlike: case O_Equal: case O_NEqual:
-    case O_GThan: case O_LThan: case O_GETo: case O_LETo:
-                   return o_Equal(a, op);
     case O_Vec:    return o_Vec(a);
     case O_Skip:   return o_Skip(a);
     case O_Take:   return o_Take(a);

@@ -36,8 +36,6 @@ N
 
 **Features:**  
 - REPL with [linenoise](https://github.com/antirez/linenoise)
-- Destructuring (NYA)
-- Keywords (NYA)
 - Lazy enumerables
   - Range
   - Vector
@@ -45,6 +43,9 @@ N
   - Set (NYA)
   - File stream (NYA)
   - Network stream (NYA)
+- Global variables (NYA)
+- Destructuring (NYA)
+- Keywords (NYA)
 - Spread forms (NYA)
 - Breakpoints (NYA)
 - Closures (NYA)
@@ -61,13 +62,13 @@ N
 
 ## Usage
 
-### Ubuntu/Debian  
+### Ubuntu/Debian
+
 `git clone --depth=1 https://github.com/phunanon/Ephem.git`  
-`cd Ephem && git clone --depth=1 https://github.com/arximboldi/immer.git`  
-`mv immer/immer src && rm -r immer`  
 Ensure CMake in installed on your system.  
+Warning: the following procedure will install [immer](https://sinusoid.es/immer/index.html), [mimalloc](https://github.com/microsoft/mimalloc), and Ephem onto your system.  
 Run `./init.sh`. If needing to subsequently recompile use `./make.sh`.  
-Execute the `build/ephem` binary.
+Execute `ephem` in the terminal, optionally with a file path argument.
 
 ## Syntax and native operations
 
@@ -236,4 +237,3 @@ Blocks Ephem for a duration of `num-seconds` or 1 second. `num-seconds` may be a
 ### Immutable vectors
 
 O(n)
-https://sinusoid.es/immer/index.html

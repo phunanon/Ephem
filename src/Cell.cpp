@@ -65,8 +65,7 @@ Cell::~Cell () {
 
 bool Cell::checkMemLeak () {
   refnum ref = 0;
-  while (!refs[ref] && ref < NUM_OBJ)
-    ++ref;
+  while (ref < NUM_OBJ && !refs[ref++]);
   return ref != NUM_OBJ;
 }
 
