@@ -1,4 +1,4 @@
 #!/bin/sh
 cd build
-make
-sudo cp ephem /usr/bin
+make -j `nproc --all`
+#sudo cp ephem /usr/bin

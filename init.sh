@@ -1,20 +1,28 @@
 #!/bin/sh
 
-#Download & install immer
-git clone --depth=1 https://github.com/arximboldi/immer.git
-mkdir -p immer/build && cd immer/build
-cmake .. && sudo make install
-cd ../.. && rm -rf immer
+[ -d build ] && rm -rf build
+[ -d immer ] && rm -rf immer
+[ -d src/immer ] && rm -rf src/immer
+[ -d mimalloc ] && rm -rf mimalloc
+mkdir build
 
-#Download & install mimalloc
+#Download immer
+git clone --depth 1 --no-checkout https://github.com/arximboldi/immer.git
+cd immer
+git checkout origin/master -- immer
+mkdir ../src/immer
+mv immer ../src/immer/immer
+cd ..
+rm -rf immer
+
+#Download & compile mimalloc
 git clone --depth=1 https://github.com/microsoft/mimalloc.git
 mkdir -p mimalloc/out/release && cd mimalloc/out/release
-cmake ../.. && sudo make install
+cmake ../.. && make -j `nproc --all`
+mv libmimalloc.a ../../../build
 cd ../../.. && rm -rf mimalloc
 
 #Build Ephem
-[ -d build ] && rm -r build
-mkdir build
 cd build
 cmake ..
 cd ..

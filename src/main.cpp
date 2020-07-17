@@ -1,4 +1,3 @@
-#include <mimalloc.h>
 #include <string>
 #include <vector>
 #include <fstream>
@@ -50,7 +49,9 @@ int main (int argc, char *argv[]) {
     ifstream infile{string(argv[1])};
     EVM vm = EVM(Env());
     parseAndLoad(vm, {istreambuf_iterator<char>(infile), istreambuf_iterator<char>()});
-    vm.exeFunc(0, nullptr);
+    auto ret = vm.exeFunc(0, nullptr);
+    if (argc == 3 && string(argv[2]) == "-r")
+      printf("%s\n", vm.toStr(ret).c_str());
   } else repl();
 
   if (Cell::checkMemLeak())
